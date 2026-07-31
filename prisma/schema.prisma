@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id           String    @id @default(cuid())
+  name         String
+  parent_email String
+  program      String
+  sessions     Session[]
+  reports      Report[]
+}
+
+model Mentor {
+  id       String    @id @default(cuid())
+  name     String
+  status   String    @default("active")
+  sessions  Session[]
+  reports   Report[]
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  student_id  String
+  mentor_id   String?
+  date        DateTime
+  attendance  String
+  activity    String  @db.Text
+  observation String  @db.Text
+  photo_path  String? @db.Text
+  next_step   String? @db.Text
+  student     Student  @relation(fields: [student_id], references: [id])
+  mentor      Mentor?  @relation(fields: [mentor_id], references: [id])
+}
+
+model Report {
+  id                   String   @id @default(cuid())
+  student_id           String
+  mentor_id            String?
+  period_start         DateTime
+  period_end           DateTime
+  summary_achievements String? @db.Text
+  summary_general      String? @db.Text
+  summary_parents      String? @db.Text
+  status               String   @default("draft")
+  student              Student  @relation(fields: [student_id], references: [id])
+  mentor               Mentor?  @relation(fields: [mentor_id], references: [id])
+}
