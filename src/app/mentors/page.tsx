@@ -43,7 +43,7 @@ export default function MentorsPage() {
       setNewName('')
       load()
     } catch {
-      setError('Gagal menambah mentor')
+      setError('Gagal menambahkan mentor')
     } finally {
       setAdding(false)
     }
