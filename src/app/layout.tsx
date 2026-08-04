@@ -16,6 +16,9 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Teman Belajar",
   description: "Aplikasi manajemen sesi belajar dan laporan perkembangan anak",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
