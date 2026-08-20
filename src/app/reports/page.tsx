@@ -99,7 +99,7 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8]">
-        <p className="text-[#6B5744] text-sm">Memuat...</p>
+        <p className="text-[#6B5744] text-sm">Loading... / Memuat...</p>
       </div>
     )
   }
@@ -114,8 +114,8 @@ export default function ReportsPage() {
             <img src="/krya-logo.png" alt="Krya" className="h-7" />
           </div>
           <Link href="/" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Dashboard</Link>
-          <Link href="/sessions" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Sesi</Link>
-          <Link href="/reports" className="text-sm font-semibold text-[#F5A623]">Laporan</Link>
+          <Link href="/sessions" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Recap Session</Link>
+          <Link href="/reports" className="text-sm font-semibold text-[#F5A623]">Monthly Report</Link>
         </div>
       </nav>
 
@@ -123,20 +123,20 @@ export default function ReportsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-semibold text-[#2C1A0E]">Monthly Reports</h1>
-            <p className="text-sm text-[#6B5744] mt-0.5">{reports.length} laporan tersimpan</p>
+            <p className="text-sm text-[#6B5744] mt-0.5">{reports.length} reports saved / laporan tersimpan</p>
           </div>
         </div>
 
         {/* Generate card */}
         <div className="bg-white rounded-lg border border-[#E8D5B7] p-4 mb-6">
-          <p className="text-sm font-medium text-[#2C1A0E] mb-3">Buat Laporan Periode Ini</p>
+          <p className="text-sm font-medium text-[#2C1A0E] mb-3">Create Monthly Report / Buat Laporan Periode Ini</p>
           {error && (
             <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
               {error}
             </div>
           )}
           {students.length === 0 ? (
-            <p className="text-xs text-[#6B5744]">Belum ada siswa terdaftar.</p>
+            <p className="text-xs text-[#6B5744]">No registered student.</p>
           ) : (
             <div className="flex gap-2">
               <select
@@ -144,7 +144,7 @@ export default function ReportsPage() {
                 onChange={e => { setSelectedStudent(e.target.value); setError('') }}
                 className="flex-1 border border-[#E8D5B7] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623]"
               >
-                <option value="">— Pilih Siswa —</option>
+                <option value="">— Select Student / Pilih Siswa —</option>
                 {students.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -163,7 +163,7 @@ export default function ReportsPage() {
         {/* Reports list */}
         {reports.length === 0 ? (
           <div className="text-center py-12 text-[#6B5744] text-sm">
-            Belum ada laporan.
+            No report yet / Belum ada laporan.
           </div>
         ) : (
           <div className="space-y-3">

@@ -13,7 +13,7 @@ export default function DashboardPage() {
           <Image src="/Logo-Teman-Belajar.png" alt="Teman Belajar" width={160} height={160} />
           <Image src="/krya-logo.png" alt="Krya" width={160} height={160} />
         </div>
-        <p className="text-sm text-[#6B5744]">Sistem Rekap Sesi & Laporan Mentor</p>
+        <p className="text-sm text-[#6B5744]">System for Recap Session & Monthly Report</p>
       </div>
 
       {/* Nav buttons */}
@@ -22,13 +22,13 @@ export default function DashboardPage() {
           href="/sessions"
           className="flex items-center justify-center w-full bg-[#F5A623] text-[#2C1A0E] text-base font-bold py-4 rounded-2xl hover:bg-[#E09615] active:scale-95 transition-all"
         >
-          Rekap Sesi
+          Recap Session
         </Link>
         <Link
           href="/reports"
           className="flex items-center justify-center w-full bg-white text-[#F5A623] text-base font-bold py-4 rounded-2xl border border-[#F5A623] hover:bg-[#FFF8EC] active:scale-95 transition-all"
         >
-          Laporan Bulanan
+          Monthly Report
         </Link>
       </div>
 

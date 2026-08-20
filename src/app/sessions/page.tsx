@@ -135,8 +135,8 @@ export default function SessionsPage() {
             <img src="/krya-logo.png" alt="Krya" className="h-7" />
           </div>
           <Link href="/" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Dashboard</Link>
-          <Link href="/sessions" className="text-sm font-semibold text-[#F5A623]">Sesi</Link>
-          <Link href="/reports" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Laporan</Link>
+          <Link href="/sessions" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Recap Session</Link>
+          <Link href="/reports" className="text-sm font-semibold text-[#F5A623]">Monthly Report</Link>
         </div>
       </nav>
 
@@ -152,23 +152,23 @@ export default function SessionsPage() {
             href="/sessions/new"
             className="bg-[#F5A623] text-[#2C1A0E] text-sm font-bold px-4 py-2 rounded-lg hover:bg-[#E09615] transition-colors"
           >
-            + Tambah
+            + Add
           </Link>
         </div>
 
         {showSuccess && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-            Rekap sesi berhasil disimpan!
+            Recap session saved / Rekap sesi berhasil disimpan!
           </div>
         )}
 
         {loading ? (
-          <p className="text-sm text-[#6B5744] py-8 text-center">Memuat...</p>
+          <p className="text-sm text-[#6B5744] py-8 text-center">Loading... / Memuat...</p>
         ) : sessions.length === 0 ? (
           <div className="text-center py-16 text-[#6B5744] text-sm">
-            <p className="mb-2">Belum ada sesi dalam periode ini.</p>
+            <p className="mb-2">No session yet on this Periode / Belum ada sesi dalam periode ini.</p>
             <Link href="/sessions/new" className="text-[#F5A623] hover:underline">
-              Tambah sesi pertama
+              Add First Session / Tambah sesi pertama
             </Link>
           </div>
         ) : (
@@ -234,7 +234,7 @@ export default function SessionsPage() {
               </div>
             ) : (
               <p className="text-sm text-[#6B5744] text-center py-12">
-                Pilih siswa untuk melihat sesinya.
+                Choose student to see recap / Pilih siswa untuk melihat sesinya.
               </p>
             )}
           </>

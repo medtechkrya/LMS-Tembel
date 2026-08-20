@@ -115,7 +115,7 @@ export default function ReportDetailPage() {
     if (missing.length > 0) {
       const last = missing.pop()
       const list = missing.length > 0 ? `${missing.join(', ')}, dan ${last}` : last
-      setError(`Harap isi semua bagian sebelum menyelesaikan laporan: ${list}`)
+      setError(`Please fill all part of the report / Harap isi semua bagian sebelum menyelesaikan laporan: ${list}`)
       return
     }
 
@@ -143,7 +143,7 @@ export default function ReportDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8]">
-        <p className="text-[#6B5744] text-sm">Memuat...</p>
+        <p className="text-[#6B5744] text-sm">Loading... / Memuat...</p>
       </div>
     )
   }
@@ -151,7 +151,7 @@ export default function ReportDetailPage() {
   if (!report) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8]">
-        <p className="text-red-400 text-sm">Laporan tidak ditemukan.</p>
+        <p className="text-red-400 text-sm">No report found / Laporan tidak ditemukan.</p>
       </div>
     )
   }
@@ -177,7 +177,7 @@ export default function ReportDetailPage() {
         {/* Locked banner */}
         {isLocked && (
           <div className="mb-4 p-3 bg-[#FFF3CD] border border-[#E8D5B7] rounded-lg text-sm text-[#856404]">
-            Laporan ini sudah disubmit. Hubungi admin untuk melakukan perubahan.
+            Report has been submitted. Contact admin to make changes.
           </div>
         )}
 
@@ -188,7 +188,7 @@ export default function ReportDetailPage() {
         )}
         {saved && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-            Tersimpan!
+            Saved! / Tersimpan!
           </div>
         )}
 
@@ -204,7 +204,7 @@ export default function ReportDetailPage() {
                   disabled={isLocked}
                   className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] disabled:bg-gray-50 disabled:text-[#6B5744]"
                 >
-                  <option value="">— Select Mentor —</option>
+                  <option value="">— Select Mentor / Pilih Mentor —</option>
                   {mentors.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
@@ -322,7 +322,7 @@ export default function ReportDetailPage() {
                 disabled={saving}
                 className="w-full bg-[#F5A623] text-[#2C1A0E] font-bold py-3 rounded-lg text-sm hover:bg-[#E09615] disabled:opacity-50 transition-colors"
               >
-                {saving ? 'Menyimpan...' : 'Simpan Laporan'}
+                {saving ? 'Saving...' : 'Save Report'}
               </button>
 
               <button
@@ -330,7 +330,7 @@ export default function ReportDetailPage() {
                 disabled={markingDone}
                 className="w-full bg-[#2C1A0E] text-white font-bold py-3 rounded-lg text-sm hover:bg-[#3d2512] disabled:opacity-50 transition-colors"
               >
-                {markingDone ? 'Memproses...' : 'Mark as Done'}
+                {markingDone ? 'Processing...' : 'Mark as Done'}
               </button>
             </>
           )}

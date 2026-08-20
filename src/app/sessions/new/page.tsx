@@ -48,8 +48,6 @@ export default function NewSessionPage() {
     ]).then(([s, m]: [Student[], Mentor[]]) => {
       setStudents(s)
       setMentors((m as Mentor[]).filter(x => x.status === 'active'))
-      // leave student_id empty so user must explicitly choose
-      // leave mentor_id empty so user must explicitly choose
     }).finally(() => setLoading(false))
   }, [])
 
@@ -75,13 +73,13 @@ export default function NewSessionPage() {
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Upload gagal')
+        setError(data.error || 'Upload failed / Upload gagal')
         return
       }
       setPhotoPath(data.path)
       setPhotoName(file.name)
     } catch {
-      setError('Upload gagal')
+      setError('Upload failed / Upload gagal')
     } finally {
       setUploading(false)
     }
@@ -91,12 +89,12 @@ export default function NewSessionPage() {
     e.preventDefault()
 
     const errors: Record<string, string> = {}
-    if (!form.student_id) errors.student_id = 'Pilih siswa terlebih dahulu'
-    if (!form.mentor_id) errors.mentor_id = 'Pilih mentor'
-    if (!form.date) errors.date = 'Tanggal wajib diisi'
-    if (!form.attendance) errors.attendance = 'Pilih kehadiran'
-    if (!form.activity.trim()) errors.activity = 'Aktivitas wajib diisi'
-    if (!form.observation.trim()) errors.observation = 'Observasi wajib diisi'
+    if (!form.student_id) errors.student_id = 'Select a student first / Pilih siswa terlebih dahulu'
+    if (!form.mentor_id) errors.mentor_id = 'Select a mentor / Pilih mentor'
+    if (!form.date) errors.date = 'Date is required / Tanggal wajib diisi'
+    if (!form.attendance) errors.attendance = 'Select attendance / Pilih kehadiran'
+    if (!form.activity.trim()) errors.activity = 'Activity is required / Aktivitas wajib diisi'
+    if (!form.observation.trim()) errors.observation = 'Observation is required / Observasi wajib diisi'
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors)
@@ -116,13 +114,13 @@ export default function NewSessionPage() {
 
       if (!res.ok) {
         const data = await res.json()
-        setError(data.error || 'Gagal menyimpan sesi')
+        setError(data.error || 'Failed to save session / Gagal menyimpan sesi')
         return
       }
 
       router.push('/sessions?success=true')
     } catch {
-      setError('Gagal menyimpan sesi')
+      setError('Failed to save session / Gagal menyimpan sesi')
     } finally {
       setSubmitting(false)
     }
@@ -131,7 +129,7 @@ export default function NewSessionPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8]">
-        <p className="text-[#6B5744] text-sm">Memuat...</p>
+        <p className="text-[#6B5744] text-sm">Loading... / Memuat...</p>
       </div>
     )
   }
@@ -146,8 +144,8 @@ export default function NewSessionPage() {
             <img src="/krya-logo.png" alt="Krya" className="h-7" />
           </div>
           <Link href="/" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Dashboard</Link>
-          <Link href="/sessions" className="text-sm font-semibold text-[#F5A623]">Sesi</Link>
-          <Link href="/reports" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Laporan</Link>
+          <Link href="/sessions" className="text-sm font-semibold text-[#F5A623]">Sessions / Sesi</Link>
+          <Link href="/reports" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Reports / Laporan</Link>
         </div>
       </nav>
 
@@ -158,8 +156,8 @@ export default function NewSessionPage() {
             ←
           </Link>
           <div>
-            <h1 className="text-xl font-semibold text-[#2C1A0E]">Rekap Sesi Baru</h1>
-            <p className="text-sm text-[#6B5744]">Isi form setelah sesi selesai</p>
+            <h1 className="text-xl font-semibold text-[#2C1A0E]">New Session Recap / Rekap Sesi Baru</h1>
+            <p className="text-sm text-[#6B5744]">Fill in after the session ends / Isi form setelah sesi selesai</p>
           </div>
         </div>
 
@@ -173,14 +171,14 @@ export default function NewSessionPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Student */}
           <div>
-            <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Siswa</label>
+            <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Student / Siswa</label>
             <select
               name="student_id"
               value={form.student_id}
               onChange={handleChange}
               className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] ${fieldErrors.student_id ? 'border-red-400' : 'border-[#E8D5B7]'}`}
             >
-              <option value="">— Pilih Siswa —</option>
+              <option value="">— Select Student / Pilih Siswa —</option>
               {students.map(s => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -199,7 +197,7 @@ export default function NewSessionPage() {
               onChange={handleChange}
               className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] ${fieldErrors.mentor_id ? 'border-red-400' : 'border-[#E8D5B7]'}`}
             >
-              <option value="">— Pilih mentor —</option>
+              <option value="">— Select Mentor / Pilih Mentor —</option>
               {mentors.map(m => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -210,7 +208,7 @@ export default function NewSessionPage() {
           {/* Date + Attendance */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Tanggal</label>
+              <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Date / Tanggal</label>
               <input
                 type="date"
                 name="date"
@@ -221,15 +219,15 @@ export default function NewSessionPage() {
               {fieldErrors.date && <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Kehadiran</label>
+              <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Attendance / Kehadiran</label>
               <select
                 name="attendance"
                 value={form.attendance}
                 onChange={handleChange}
                 className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] ${fieldErrors.attendance ? 'border-red-400' : 'border-[#E8D5B7]'}`}
               >
-                <option value="Present">Hadir</option>
-                <option value="Absent">Tidak Hadir</option>
+                <option value="Present">Present / Hadir</option>
+                <option value="Absent">Absent / Tidak Hadir</option>
                 <option value="Reschedule">Reschedule</option>
               </select>
               {fieldErrors.attendance && <p className="mt-1 text-xs text-red-600">{fieldErrors.attendance}</p>}
@@ -239,15 +237,15 @@ export default function NewSessionPage() {
           {/* Activity */}
           <div>
             <label className="block text-sm font-medium text-[#2C1A0E] mb-1">
-              Aktivitas{' '}
-              <span className="text-[#6B5744] font-normal text-xs">(1 kalimat)</span>
+              Activity / Aktivitas{' '}
+              <span className="text-[#6B5744] font-normal text-xs">(1 sentence / kalimat)</span>
             </label>
             <textarea
               name="activity"
               value={form.activity}
               onChange={handleChange}
               rows={3}
-              placeholder="Apa yang dilakukan dalam sesi ini?"
+              placeholder="What was done in this session? / Apa yang dilakukan dalam sesi ini?"
               className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] resize-none ${fieldErrors.activity ? 'border-red-400' : 'border-[#E8D5B7]'}`}
             />
             {fieldErrors.activity && <p className="mt-1 text-xs text-red-600">{fieldErrors.activity}</p>}
@@ -256,15 +254,15 @@ export default function NewSessionPage() {
           {/* Observation */}
           <div>
             <label className="block text-sm font-medium text-[#2C1A0E] mb-1">
-              Observasi{' '}
-              <span className="text-[#6B5744] font-normal text-xs">(1 paragraf, 1-6 kalimat)</span>
+              Observation / Observasi{' '}
+              <span className="text-[#6B5744] font-normal text-xs">(1 paragraph, 1-6 sentences / kalimat)</span>
             </label>
             <textarea
               name="observation"
               value={form.observation}
               onChange={handleChange}
               rows={3}
-              placeholder="Bagaimana perkembangan, performa, dan respons siswa dalam sesi ini?"
+              placeholder="How was the student's development and response? / Bagaimana perkembangan, performa, dan respons siswa dalam sesi ini?"
               className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] resize-none ${fieldErrors.observation ? 'border-red-400' : 'border-[#E8D5B7]'}`}
             />
             {fieldErrors.observation && <p className="mt-1 text-xs text-red-600">{fieldErrors.observation}</p>}
@@ -273,8 +271,8 @@ export default function NewSessionPage() {
           {/* Photo */}
           <div>
             <label className="block text-sm font-medium text-[#2C1A0E] mb-1">
-              Foto Sesi{' '}
-              <span className="text-[#6B5744] font-normal text-xs">(opsional)</span>
+              Session Photo / Foto Sesi{' '}
+              <span className="text-[#6B5744] font-normal text-xs">(optional / opsional)</span>
             </label>
             <button
               type="button"
@@ -282,11 +280,11 @@ export default function NewSessionPage() {
               className="w-full border-2 border-dashed border-[#E8D5B7] rounded-lg p-4 text-center hover:border-[#F5A623] transition-colors"
             >
               {uploading ? (
-                <span className="text-sm text-[#6B5744]">Mengupload...</span>
+                <span className="text-sm text-[#6B5744]">Uploading... / Mengupload...</span>
               ) : photoName ? (
                 <span className="text-sm text-green-600">✓ {photoName}</span>
               ) : (
-                <span className="text-sm text-[#6B5744]">Ketuk untuk pilih foto (JPG, PNG, WEBP)</span>
+                <span className="text-sm text-[#6B5744]">Tap to select photo / Ketuk untuk pilih foto (JPG, PNG, WEBP)</span>
               )}
             </button>
             <input
@@ -304,7 +302,7 @@ export default function NewSessionPage() {
             disabled={submitting || uploading}
             className="w-full bg-[#F5A623] text-[#2C1A0E] font-bold py-3 rounded-lg text-sm hover:bg-[#E09615] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {submitting ? 'Menyimpan...' : 'Simpan Rekap Sesi'}
+            {submitting ? 'Saving... / Menyimpan...' : 'Save Session Recap / Simpan Rekap Sesi'}
           </button>
         </form>
 
