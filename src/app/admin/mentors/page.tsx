@@ -100,9 +100,9 @@ export default function AdminMentorsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#FAFAF8]">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
-      <main className="flex-1 p-8 max-w-2xl">
+      <main className="flex-1 p-5 md:p-8 max-w-5xl">
         <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6">Manage Mentors</h1>
 
         <form onSubmit={handleAdd} className="bg-white rounded-xl border border-[#E8D5B7] p-5 mb-6">
@@ -132,7 +132,10 @@ export default function AdminMentorsPage() {
             <h2 className="text-sm font-semibold text-[#2C1A0E]">{mentors.length} mentors</h2>
           </div>
           {loading ? (
-            <p className="text-sm text-[#6B5744] p-5">Loading...</p>
+            <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
+              <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
+              <p className="text-sm font-medium">Memuat data mentor...</p>
+            </div>
           ) : mentors.length === 0 ? (
             <p className="text-sm text-[#6B5744] p-5">No mentors yet.</p>
           ) : (

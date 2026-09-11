@@ -41,6 +41,29 @@ export default function AdminReportsPage() {
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [exporting, setExporting] = useState<string | null>(null)
+  const [sendingId, setSendingId] = useState<string | null>(null)
+
+  const handleSend = async (reportId: string) => {
+    if (!confirm('Send this report to the parent?')) return
+    setSendingId(reportId)
+    try {
+      const res = await fetch(`/api/admin/reports/${reportId}/send`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send email')
+      
+      setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: data.report.status } : r))
+      
+      if (data.previewUrl) {
+        window.open(data.previewUrl, '_blank')
+      } else {
+        alert('Email sent successfully!')
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error sending email')
+    } finally {
+      setSendingId(null)
+    }
+  }
 
   useEffect(() => {
     fetch('/api/reports')
@@ -90,42 +113,50 @@ export default function AdminReportsPage() {
   const groups = groupByMonth(reports)
 
   return (
-    <div className="flex min-h-screen bg-[#FAFAF8]">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
-      <main className="flex-1 p-8 max-w-4xl">
-        <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6">Reports</h1>
+      <main className="flex-1 p-5 md:p-8 max-w-5xl">
+        <h1 className="text-2xl font-bold text-[#2C1A0E] mb-8 tracking-tight">Reports</h1>
 
         {loading ? (
-          <p className="text-sm text-[#6B5744]">Loading...</p>
+          <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
+            <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
+            <p className="text-sm font-medium">Loading reports...</p>
+          </div>
         ) : groups.length === 0 ? (
-          <p className="text-sm text-[#6B5744]">No reports yet.</p>
+          <p className="text-sm text-[#B0957A] italic text-center py-12">No reports yet.</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {groups.map(group => {
               const isOpen = open.has(group.key)
               const exportable = group.reports.filter(r => r.status === 'done' || r.status === 'sent')
               return (
-                <div key={group.key} className="bg-white rounded-xl border border-[#E8D5B7]">
+                <div key={group.key} className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 overflow-hidden transition-all duration-300">
                   {/* Group header */}
-                  <div className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center justify-between px-6 py-5 bg-[#FAFAF8]/30">
                     <button
                       onClick={() => toggleOpen(group.key)}
-                      className="flex items-center gap-2 text-left"
+                      className="flex items-center gap-3 text-left group/btn outline-none"
                     >
-                      <span className="text-sm font-semibold text-[#2C1A0E]">
-                        {group.label}
-                      </span>
-                      <span className="text-xs text-[#6B5744]">
-                        ({group.reports.length} report{group.reports.length !== 1 ? 's' : ''})
-                      </span>
-                      <span className="text-xs text-[#6B5744]">{isOpen ? '▲' : '▼'}</span>
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center bg-white border border-[#E8D5B7]/60 shadow-sm transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+                        <svg className="w-4 h-4 text-[#F5A623]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
+                      <div>
+                        <span className="text-[15px] font-bold text-[#2C1A0E] group-hover/btn:text-[#F5A623] transition-colors">
+                          {group.label}
+                        </span>
+                        <span className="text-[13px] font-medium text-[#8a7662] ml-2">
+                          ({group.reports.length} report{group.reports.length !== 1 ? 's' : ''})
+                        </span>
+                      </div>
                     </button>
                     {exportable.length > 0 && (
                       <button
                         onClick={() => handleExport(group.period, group.label)}
                         disabled={exporting === group.period}
-                        className="text-xs font-bold bg-[#F5A623] text-[#2C1A0E] px-3 py-1.5 rounded-lg hover:bg-[#E09615] disabled:opacity-50 transition-colors"
+                        className="text-[13px] font-bold bg-[#F5A623] text-[#2C1A0E] px-4 py-2 rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-[#F6AF3C] disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm disabled:cursor-not-allowed transition-all flex items-center gap-2"
                       >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         {exporting === group.period ? 'Exporting...' : `Export All PDF (${exportable.length})`}
                       </button>
                     )}
@@ -133,43 +164,51 @@ export default function AdminReportsPage() {
 
                   {/* Rows */}
                   {isOpen && (
-                    <div className="border-t border-[#E8D5B7] divide-y divide-[#E8D5B7]">
+                    <div className="border-t border-[#E8D5B7]/40 divide-y divide-[#E8D5B7]/20 animate-in fade-in slide-in-from-top-2 duration-300">
                       {group.reports.map(report => {
                         const canDownload = report.status === 'done' || report.status === 'sent'
+                        const badgeStyle = STATUS_STYLE[report.status] ?? 'bg-gray-100 text-gray-500'
                         return (
-                          <div key={report.id} className="flex items-center justify-between px-5 py-3">
+                          <div key={report.id} className="flex items-center justify-between px-6 py-4 hover:bg-[#FAFAF8]/50 transition-colors">
                             <div>
-                              <p className="text-sm font-medium text-[#2C1A0E]">{report.student.name}</p>
-                              <p className="text-xs text-[#6B5744]">
-                                Mentor: {report.mentor?.name ?? '—'}
+                              <p className="text-[15px] font-semibold text-[#2C1A0E]">{report.student.name}</p>
+                              <p className="text-[13px] font-medium text-[#8a7662] mt-0.5">
+                                Mentor: <span className="text-[#6B5744]">{report.mentor?.name ?? '—'}</span>
                               </p>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_STYLE[report.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                            <div className="flex items-center gap-4">
+                              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset ${badgeStyle.includes('ring') ? badgeStyle : badgeStyle + ' ring-current/10'}`}>
                                 {STATUS_LABEL[report.status] ?? report.status}
                               </span>
-                              <Link
-                                href={`/admin/reports/${report.id}`}
-                                className="text-xs text-[#F5A623] hover:underline"
-                              >
-                                View
-                              </Link>
-                              {canDownload && (
-                                <a
-                                  href={`/api/reports/${report.id}/pdf`}
-                                  download
-                                  className="text-xs text-[#6B5744] hover:underline"
+                              <div className="flex items-center gap-3">
+                                <Link
+                                  href={`/admin/reports/${report.id}`}
+                                  className="text-[13px] font-bold text-[#F5A623] hover:text-[#E09615] transition-colors bg-[#FAFAF8] px-3 py-1.5 rounded-lg border border-[#E8D5B7]/60 hover:bg-white hover:border-[#F5A623]/40 shadow-sm hover:shadow"
                                 >
-                                  PDF
-                                </a>
-                              )}
-                              <button
-                                disabled
-                                className="text-xs text-gray-300 cursor-not-allowed"
-                                title="Coming soon"
-                              >
-                                Send
-                              </button>
+                                  View
+                                </Link>
+                                {canDownload && (
+                                  <a
+                                    href={`/api/reports/${report.id}/pdf`}
+                                    download
+                                    className="text-[13px] font-semibold text-[#6B5744] hover:text-[#2C1A0E] transition-colors"
+                                  >
+                                    PDF
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => handleSend(report.id)}
+                                  disabled={sendingId === report.id || report.status === 'draft'}
+                                  className={`text-[13px] font-semibold ml-1 transition-colors ${
+                                    sendingId === report.id || report.status === 'draft'
+                                      ? 'text-gray-300 cursor-not-allowed'
+                                      : 'text-[#F5A623] hover:text-[#E09615]'
+                                  }`}
+                                  title={report.status === 'draft' ? "Cannot send draft reports" : "Send to Parent"}
+                                >
+                                  {sendingId === report.id ? 'Sending...' : report.status === 'sent' ? 'Resend' : 'Send'}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )

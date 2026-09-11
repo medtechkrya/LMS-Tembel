@@ -89,9 +89,9 @@ export default function AdminStudentsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#FAFAF8]">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
-      <main className="flex-1 p-8 max-w-3xl">
+      <main className="flex-1 p-5 md:p-8 max-w-5xl">
         <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6">Manage Students</h1>
 
         {/* Add form */}
@@ -145,7 +145,10 @@ export default function AdminStudentsPage() {
             <h2 className="text-sm font-semibold text-[#2C1A0E]">{students.length} students</h2>
           </div>
           {loading ? (
-            <p className="text-sm text-[#6B5744] p-5">Loading...</p>
+            <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
+              <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
+              <p className="text-sm font-medium">Memuat data siswa...</p>
+            </div>
           ) : students.length === 0 ? (
             <p className="text-sm text-[#6B5744] p-5">No students yet.</p>
           ) : (

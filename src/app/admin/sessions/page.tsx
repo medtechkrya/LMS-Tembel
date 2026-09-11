@@ -33,37 +33,12 @@ const ATTENDANCE_BADGE: Record<string, string> = {
   hadir: 'bg-green-100 text-green-700',
 }
 
-function getSessionPeriodKey(dateStr: string): string {
-  const d = new Date(dateStr)
-  let year = d.getFullYear()
-  let month = d.getMonth() + 1
-  if (d.getDate() >= 26) {
-    month += 1
-    if (month > 12) { month = 1; year++ }
-  }
-  return `${year}-${String(month).padStart(2, '0')}`
-}
-
-function getCurrentPeriodKey(): string {
-  const now = new Date()
-  let year = now.getFullYear()
-  let month = now.getMonth() + 1
-  if (now.getDate() >= 26) {
-    month += 1
-    if (month > 12) { month = 1; year++ }
-  }
-  return `${year}-${String(month).padStart(2, '0')}`
-}
+import { getAvailablePeriods, getCurrentPeriod, getPeriodKeyFromDate } from '@/lib/period'
 
 function formatPeriodLabel(key: string): string {
-  const [yearStr, monthStr] = key.split('-')
-  const year = parseInt(yearStr)
-  const month = parseInt(monthStr)
-  const startDate = new Date(year, month - 2, 26)
-  const endDate = new Date(year, month - 1, 25)
-  const s = startDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-  const e = endDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-  return `${s} – ${e}`
+  const period = getAvailablePeriods(12).find(p => p.key === key)
+  if (period) return period.label
+  return key
 }
 
 function formatDate(dateStr: string): string {
@@ -113,12 +88,12 @@ export default function AdminSessionsPage() {
       setStudentSessions(sessions)
 
       const keys = new Set<string>()
-      for (const s of sessions) keys.add(getSessionPeriodKey(s.date))
-      keys.add(getCurrentPeriodKey())
+      for (const s of sessions) keys.add(getPeriodKeyFromDate(new Date(s.date)))
+      keys.add(getCurrentPeriod().key)
       const sorted = Array.from(keys).sort((a, b) => b.localeCompare(a))
       setAvailablePeriods(sorted)
 
-      const current = getCurrentPeriodKey()
+      const current = getCurrentPeriod().key
       setSelectedPeriod(sorted.includes(current) ? current : sorted[0])
     } catch {
       setError('Failed to load sessions')
@@ -195,70 +170,84 @@ export default function AdminSessionsPage() {
   }
 
   const filteredSessions = studentSessions.filter(
-    s => getSessionPeriodKey(s.date) === selectedPeriod
+    s => getPeriodKeyFromDate(new Date(s.date)) === selectedPeriod
   )
 
   const selectedStudent = students.find(s => s.id === selectedStudentId)
 
   return (
-    <div className="flex min-h-screen bg-[#FAFAF8]">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
-      <main className="flex-1 p-8 max-w-5xl">
-        <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6">Session Management</h1>
+      <main className="flex-1 p-5 md:p-8 max-w-6xl">
+        <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6 tracking-tight">Session Management</h1>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="mb-6 p-3 bg-red-50/50 backdrop-blur-sm border border-red-200/50 rounded-xl text-[13px] font-medium text-red-700 animate-in fade-in slide-in-from-top-2">
             {error}
           </div>
         )}
 
         {/* Dropdowns */}
-        <div className="flex gap-4 mb-6">
-          <div className="w-72">
-            <label className="block text-xs font-medium text-[#6B5744] mb-1.5">Student</label>
-            <select
-              value={selectedStudentId}
-              onChange={e => handleStudentChange(e.target.value)}
-              disabled={loadingStudents}
-              className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] text-[#2C1A0E]"
-            >
-              <option value="">Select Student</option>
-              {students.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+        <div className="flex gap-4 mb-8">
+          <div className="w-72 relative">
+            <label className="block text-[12px] font-bold tracking-wider uppercase text-[#B0957A] mb-2">Student</label>
+            <div className="relative">
+              <select
+                value={selectedStudentId}
+                onChange={e => handleStudentChange(e.target.value)}
+                disabled={loadingStudents}
+                className="appearance-none w-full border border-[#E8D5B7]/80 rounded-xl px-4 py-2.5 pr-10 text-[14px] bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:border-[#F5A623] text-[#2C1A0E] shadow-sm transition-all"
+              >
+                <option value="">Select Student</option>
+                {students.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#6B5744]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
           </div>
 
-          <div className="w-64">
-            <label className="block text-xs font-medium text-[#6B5744] mb-1.5">Periode</label>
-            <select
-              value={selectedPeriod}
-              onChange={e => handlePeriodChange(e.target.value)}
-              disabled={!selectedStudentId || loadingSessions}
-              className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] text-[#2C1A0E] disabled:opacity-50"
-            >
-              {availablePeriods.length === 0
-                ? <option value="">Select Periode</option>
-                : availablePeriods.map(key => (
-                    <option key={key} value={key}>{formatPeriodLabel(key)}</option>
-                  ))
-              }
-            </select>
+          <div className="w-64 relative">
+            <label className="block text-[12px] font-bold tracking-wider uppercase text-[#B0957A] mb-2">Periode</label>
+            <div className="relative">
+              <select
+                value={selectedPeriod}
+                onChange={e => handlePeriodChange(e.target.value)}
+                disabled={!selectedStudentId || loadingSessions}
+                className="appearance-none w-full border border-[#E8D5B7]/80 rounded-xl px-4 py-2.5 pr-10 text-[14px] bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:border-[#F5A623] text-[#2C1A0E] shadow-sm disabled:opacity-50 transition-all"
+              >
+                {availablePeriods.length === 0
+                  ? <option value="">Select Periode</option>
+                  : availablePeriods.map(key => (
+                      <option key={key} value={key}>{formatPeriodLabel(key)}</option>
+                    ))
+                }
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#6B5744]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Table area */}
         {loadingSessions ? (
-          <p className="text-sm text-[#6B5744]">Loading sessions...</p>
+          <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
+            <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
+            <p className="text-sm font-medium">Loading sessions...</p>
+          </div>
         ) : selectedStudentId && selectedPeriod ? (
-          <>
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
           {/* Photo actions */}
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-4 bg-white px-5 py-3 rounded-2xl shadow-sm border border-[#E8D5B7]/40">
             <button
               onClick={handleDownloadPhotos}
               disabled={downloadingPhotos}
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-[#2C1A0E] text-white hover:bg-[#3d2512] disabled:opacity-50 transition-colors"
+              className="text-[13px] font-bold px-5 py-2 rounded-lg bg-[#2C1A0E] text-white hover:bg-[#3d2512] shadow-sm hover:shadow-md disabled:opacity-50 disabled:shadow-sm transition-all flex items-center gap-2"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               {downloadingPhotos ? 'Downloading...' : 'Download All Photos'}
             </button>
 
@@ -266,92 +255,94 @@ export default function AdminSessionsPage() {
               <button
                 onClick={handleDeletePhotos}
                 disabled={deletingPhotos}
-                className="text-sm font-medium px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                className="text-[13px] font-bold px-5 py-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 shadow-sm disabled:opacity-50 transition-all flex items-center gap-2"
               >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 {deletingPhotos ? 'Deleting...' : 'Delete All Photos'}
               </button>
             )}
 
-            <p className="text-xs text-[#6B5744] ml-1">
-              Download photos before deleting. Deleted photos cannot be recovered.
+            <p className="text-[12px] font-medium text-[#B0957A] ml-2">
+              <span className="text-[#6B5744]">Pro tip:</span> Download photos before deleting. Deleted photos cannot be recovered.
             </p>
           </div>
 
-          <div className="bg-white rounded-xl border border-[#E8D5B7]">
+          <div className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 overflow-hidden">
             {/* Table header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[#E8D5B7]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8D5B7]/40 bg-[#FAFAF8]/50">
               <div>
-                <span className="text-sm font-semibold text-[#2C1A0E]">{selectedStudent?.name}</span>
-                <span className="text-xs text-[#6B5744] ml-2">· {formatPeriodLabel(selectedPeriod)}</span>
+                <span className="text-[15px] font-bold text-[#2C1A0E]">{selectedStudent?.name}</span>
+                <span className="text-[13px] font-medium text-[#8a7662] ml-2 tracking-wide uppercase">· {formatPeriodLabel(selectedPeriod)}</span>
               </div>
-              <span className="text-xs text-[#6B5744]">
-                {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''} in this period
+              <span className="text-[12px] font-bold text-[#F5A623] bg-[#F5A623]/10 px-3 py-1 rounded-full">
+                {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
               </span>
             </div>
 
             {filteredSessions.length === 0 ? (
-              <p className="text-sm text-[#6B5744] px-5 py-6 italic">No sessions in this period.</p>
+              <p className="text-sm text-[#B0957A] text-center py-12 italic">No sessions in this period.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-[#E8D5B7] bg-[#FAFAF8]">
-                      <th className="text-left px-5 py-2.5 font-medium text-[#6B5744] whitespace-nowrap w-44">Date</th>
-                      <th className="text-left px-3 py-2.5 font-medium text-[#6B5744] w-28">Mentor</th>
-                      <th className="text-left px-3 py-2.5 font-medium text-[#6B5744] w-28">Attendance</th>
-                      <th className="text-left px-3 py-2.5 font-medium text-[#6B5744]">Activity</th>
-                      <th className="text-left px-3 py-2.5 font-medium text-[#6B5744] w-24">Photo</th>
-                      <th className="px-5 py-2.5 w-16"></th>
+                    <tr className="border-b border-[#E8D5B7]/40 bg-white">
+                      <th className="px-6 py-3 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase whitespace-nowrap w-44">Date</th>
+                      <th className="px-4 py-3 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase w-32">Mentor</th>
+                      <th className="px-4 py-3 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase w-32">Attendance</th>
+                      <th className="px-4 py-3 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase">Activity</th>
+                      <th className="px-4 py-3 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase w-24">Photo</th>
+                      <th className="px-6 py-3 w-16"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E8D5B7]">
+                  <tbody className="divide-y divide-[#E8D5B7]/20 text-[13px]">
                     {filteredSessions.map(session => {
-                      const badge = ATTENDANCE_BADGE[session.attendance] ?? 'bg-gray-100 text-gray-600'
+                      const badge = ATTENDANCE_BADGE[session.attendance] ?? 'bg-gray-100 text-gray-600 ring-gray-500/10'
                       const label = ATTENDANCE_LABEL[session.attendance] ?? session.attendance
                       return (
-                        <tr key={session.id} className="hover:bg-[#FAFAF8] transition-colors">
-                          <td className="px-5 py-3 text-[#2C1A0E] whitespace-nowrap">
+                        <tr key={session.id} className="hover:bg-[#FAFAF8]/50 transition-colors group">
+                          <td className="px-6 py-4 font-semibold text-[#2C1A0E] whitespace-nowrap">
                             {formatDate(session.date)}
                           </td>
-                          <td className="px-3 py-3 text-[#6B5744]">
+                          <td className="px-4 py-4 text-[#6B5744] font-medium">
                             {session.mentor?.name ?? '—'}
                           </td>
-                          <td className="px-3 py-3">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full font-medium ${badge}`}>
+                          <td className="px-4 py-4">
+                            <span className={`inline-flex px-2.5 py-1 rounded-full font-semibold ring-1 ring-inset ${badge.includes('ring') ? badge : badge + ' ring-current/10'}`}>
                               {label}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-[#2C1A0E] max-w-xs">
-                            {session.activity.length > 50
-                              ? session.activity.slice(0, 50) + '…'
+                          <td className="px-4 py-4 text-[#6B5744] leading-relaxed max-w-[250px]">
+                            {session.activity.length > 60
+                              ? session.activity.slice(0, 60) + '…'
                               : session.activity}
                           </td>
-                          <td className="px-3 py-3">
+                          <td className="px-4 py-4">
                             {session.photo_path ? (
-                              <div className="flex flex-col gap-1">
-                                <a href={session.photo_path} target="_blank" rel="noopener noreferrer">
+                              <div className="flex flex-col gap-1.5 items-start">
+                                <a href={session.photo_path} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden ring-1 ring-[#E8D5B7] hover:ring-[#F5A623] transition-all hover:scale-105 shadow-sm">
                                   <img
                                     src={session.photo_path}
                                     alt="Foto sesi"
-                                    className="w-[60px] h-[60px] object-cover rounded"
+                                    className="w-14 h-14 object-cover"
                                   />
                                 </a>
                                 <a
                                   href={`/api/admin/sessions/${session.id}/photo`}
                                   download
-                                  className="text-[10px] text-[#F5A623] hover:underline"
+                                  className="text-[10px] font-bold text-[#F5A623] hover:text-[#E09615] flex items-center gap-1 transition-colors"
                                 >
-                                  Download
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                  Get
                                 </a>
                               </div>
                             ) : (
-                              <span className="text-[#6B5744]">—</span>
+                              <span className="text-[#B0957A] font-medium">—</span>
                             )}
                           </td>
-                          <td className="px-5 py-3 text-right">
+                          <td className="px-6 py-4 text-right">
                             <button
                               onClick={() => handleDelete(session.id)}
-                              className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                              className="text-[13px] font-bold text-red-500 opacity-0 group-hover:opacity-100 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-all"
                             >
                               Delete
                             </button>
@@ -364,7 +355,7 @@ export default function AdminSessionsPage() {
               </div>
             )}
           </div>
-          </>
+          </div>
         ) : null}
       </main>
     </div>

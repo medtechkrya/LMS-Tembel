@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import MentorNav from '@/components/MentorNav'
 
 interface Student {
   id: string
@@ -128,117 +129,121 @@ export default function NewSessionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8]">
-        <p className="text-[#6B5744] text-sm">Loading... / Memuat...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAF8] text-[#6B5744]">
+        <div className="w-10 h-10 border-4 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-4 shadow-sm" />
+        <p className="text-[14px] font-bold tracking-wide">Memuat data...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
-      {/* Nav */}
-      <nav className="bg-white border-b-2 border-[#E8D5B7] sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 flex items-center gap-6 h-12">
-          <div className="flex items-center gap-2 mr-auto">
-            <img src="/Logo-Teman-Belajar.png" alt="Teman Belajar" className="h-7" />
-            <img src="/krya-logo.png" alt="Krya" className="h-7" />
-          </div>
-          <Link href="/" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Dashboard</Link>
-          <Link href="/sessions" className="text-sm font-semibold text-[#F5A623]">Sessions / Sesi</Link>
-          <Link href="/reports" className="text-sm text-[#2C1A0E]/60 hover:text-[#2C1A0E] transition-colors">Reports / Laporan</Link>
-        </div>
-      </nav>
-
-      <div className="max-w-lg mx-auto px-4 py-6">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
+      <MentorNav />
+      <div className="max-w-xl mx-auto px-5 py-8">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <Link href="/sessions" className="text-[#6B5744] hover:text-[#2C1A0E]">
-            ←
+        <div className="flex items-center gap-4 mb-8">
+          <Link href="/sessions" className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white border border-[#E8D5B7]/60 text-[#6B5744] shadow-sm hover:shadow hover:text-[#2C1A0E] transition-all">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           </Link>
           <div>
-            <h1 className="text-xl font-semibold text-[#2C1A0E]">New Session Recap / Rekap Sesi Baru</h1>
-            <p className="text-sm text-[#6B5744]">Fill in after the session ends / Isi form setelah sesi selesai</p>
+            <h1 className="text-2xl font-bold text-[#2C1A0E] tracking-tight">New Session Recap</h1>
+            <p className="text-[13px] font-medium text-[#6B5744] mt-0.5">Fill in after the session ends / Isi form setelah sesi selesai</p>
           </div>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="mb-6 p-4 bg-red-50/50 backdrop-blur-sm border border-red-200/50 rounded-2xl text-[13px] font-medium text-red-700 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 p-6 sm:p-8 space-y-6">
           {/* Student */}
           <div>
-            <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Student / Siswa</label>
-            <select
-              name="student_id"
-              value={form.student_id}
-              onChange={handleChange}
-              className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] ${fieldErrors.student_id ? 'border-red-400' : 'border-[#E8D5B7]'}`}
-            >
-              <option value="">— Select Student / Pilih Siswa —</option>
-              {students.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.student_id && <p className="mt-1 text-xs text-red-600">{fieldErrors.student_id}</p>}
+            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Student / Siswa</label>
+            <div className="relative">
+              <select
+                name="student_id"
+                value={form.student_id}
+                onChange={handleChange}
+                className={`appearance-none w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 pr-10 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white transition-all ${fieldErrors.student_id ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
+              >
+                <option value="">— Select Student / Pilih Siswa —</option>
+                {students.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#6B5744]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
+            {fieldErrors.student_id && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.student_id}</p>}
           </div>
 
           {/* Mentor */}
           <div>
-            <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Mentor</label>
-            <select
-              name="mentor_id"
-              value={form.mentor_id}
-              onChange={handleChange}
-              className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] ${fieldErrors.mentor_id ? 'border-red-400' : 'border-[#E8D5B7]'}`}
-            >
-              <option value="">— Select Mentor / Pilih Mentor —</option>
-              {mentors.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
-            {fieldErrors.mentor_id && <p className="mt-1 text-xs text-red-600">{fieldErrors.mentor_id}</p>}
+            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Mentor</label>
+            <div className="relative">
+              <select
+                name="mentor_id"
+                value={form.mentor_id}
+                onChange={handleChange}
+                className={`appearance-none w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 pr-10 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white transition-all ${fieldErrors.mentor_id ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
+              >
+                <option value="">— Select Mentor / Pilih Mentor —</option>
+                {mentors.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#6B5744]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
+            {fieldErrors.mentor_id && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.mentor_id}</p>}
           </div>
 
           {/* Date + Attendance */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Date / Tanggal</label>
+              <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Date / Tanggal</label>
               <input
                 type="date"
                 name="date"
                 value={form.date}
                 onChange={handleChange}
-                className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] ${fieldErrors.date ? 'border-red-400' : 'border-[#E8D5B7]'}`}
+                className={`w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white transition-all ${fieldErrors.date ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
               />
-              {fieldErrors.date && <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>}
+              {fieldErrors.date && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.date}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#2C1A0E] mb-1">Attendance / Kehadiran</label>
-              <select
-                name="attendance"
-                value={form.attendance}
-                onChange={handleChange}
-                className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] ${fieldErrors.attendance ? 'border-red-400' : 'border-[#E8D5B7]'}`}
-              >
-                <option value="Present">Present / Hadir</option>
-                <option value="Absent">Absent / Tidak Hadir</option>
-                <option value="Reschedule">Reschedule</option>
-              </select>
-              {fieldErrors.attendance && <p className="mt-1 text-xs text-red-600">{fieldErrors.attendance}</p>}
+              <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Attendance / Kehadiran</label>
+              <div className="relative">
+                <select
+                  name="attendance"
+                  value={form.attendance}
+                  onChange={handleChange}
+                  className={`appearance-none w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 pr-10 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white transition-all ${fieldErrors.attendance ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
+                >
+                  <option value="Present">Present / Hadir</option>
+                  <option value="Absent">Absent / Tidak Hadir</option>
+                  <option value="Reschedule">Reschedule</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#6B5744]">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+              {fieldErrors.attendance && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.attendance}</p>}
             </div>
           </div>
 
           {/* Activity */}
           <div>
-            <label className="block text-sm font-medium text-[#2C1A0E] mb-1">
+            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
               Activity / Aktivitas{' '}
-              <span className="text-[#6B5744] font-normal text-xs">(1 sentence / kalimat)</span>
+              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1 sentence / kalimat)</span>
             </label>
             <textarea
               name="activity"
@@ -246,45 +251,62 @@ export default function NewSessionPage() {
               onChange={handleChange}
               rows={3}
               placeholder="What was done in this session? / Apa yang dilakukan dalam sesi ini?"
-              className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] resize-none ${fieldErrors.activity ? 'border-red-400' : 'border-[#E8D5B7]'}`}
+              className={`w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white resize-none transition-all placeholder:text-[#B0957A] ${fieldErrors.activity ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
             />
-            {fieldErrors.activity && <p className="mt-1 text-xs text-red-600">{fieldErrors.activity}</p>}
+            {fieldErrors.activity && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.activity}</p>}
           </div>
 
           {/* Observation */}
           <div>
-            <label className="block text-sm font-medium text-[#2C1A0E] mb-1">
+            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
               Observation / Observasi{' '}
-              <span className="text-[#6B5744] font-normal text-xs">(1 paragraph, 1-6 sentences / kalimat)</span>
+              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1 paragraph, 1-6 sentences / kalimat)</span>
             </label>
             <textarea
               name="observation"
               value={form.observation}
               onChange={handleChange}
-              rows={3}
+              rows={4}
               placeholder="How was the student's development and response? / Bagaimana perkembangan, performa, dan respons siswa dalam sesi ini?"
-              className={`w-full border rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] resize-none ${fieldErrors.observation ? 'border-red-400' : 'border-[#E8D5B7]'}`}
+              className={`w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white resize-none transition-all placeholder:text-[#B0957A] ${fieldErrors.observation ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
             />
-            {fieldErrors.observation && <p className="mt-1 text-xs text-red-600">{fieldErrors.observation}</p>}
+            {fieldErrors.observation && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.observation}</p>}
           </div>
 
           {/* Photo */}
           <div>
-            <label className="block text-sm font-medium text-[#2C1A0E] mb-1">
+            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
               Session Photo / Foto Sesi{' '}
-              <span className="text-[#6B5744] font-normal text-xs">(optional / opsional)</span>
+              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(optional / opsional)</span>
             </label>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-[#E8D5B7] rounded-lg p-4 text-center hover:border-[#F5A623] transition-colors"
+              className="w-full bg-[#FAFAF8] border-2 border-dashed border-[#E8D5B7] rounded-xl p-6 text-center hover:bg-white hover:border-[#F5A623]/60 transition-colors group"
             >
               {uploading ? (
-                <span className="text-sm text-[#6B5744]">Uploading... / Mengupload...</span>
+                <div className="flex items-center justify-center gap-3 text-[15px] font-medium text-[#6B5744]">
+                  <div className="w-5 h-5 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin" />
+                  Uploading...
+                </div>
               ) : photoName ? (
-                <span className="text-sm text-green-600">✓ {photoName}</span>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                  <span className="text-[14px] font-medium text-green-700">{photoName}</span>
+                  <span className="text-[12px] text-green-600/70">Tap to replace</span>
+                </div>
               ) : (
-                <span className="text-sm text-[#6B5744]">Tap to select photo / Ketuk untuk pilih foto (JPG, PNG, WEBP)</span>
+                <div className="flex flex-col items-center gap-2 text-[#6B5744] group-hover:text-[#2C1A0E] transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-white shadow-sm border border-[#E8D5B7]/60 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  </div>
+                  <div>
+                    <span className="text-[14px] font-semibold block">Tap to select photo</span>
+                    <span className="text-[13px] text-[#B0957A]">JPG, PNG, or WEBP</span>
+                  </div>
+                </div>
               )}
             </button>
             <input
@@ -297,13 +319,15 @@ export default function NewSessionPage() {
           </div>
 
           {/* Submit */}
-          <button
-            type="submit"
-            disabled={submitting || uploading}
-            className="w-full bg-[#F5A623] text-[#2C1A0E] font-bold py-3 rounded-lg text-sm hover:bg-[#E09615] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {submitting ? 'Saving... / Menyimpan...' : 'Save Session Recap / Simpan Rekap Sesi'}
-          </button>
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={submitting || uploading}
+              className="w-full bg-[#F5A623] text-[#2C1A0E] font-bold py-3.5 rounded-xl text-[15px] shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-[#F6AF3C] disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm disabled:cursor-not-allowed transition-all duration-200"
+            >
+              {submitting ? 'Saving... / Menyimpan...' : 'Save Session Recap / Simpan Rekap Sesi'}
+            </button>
+          </div>
         </form>
 
       </div>

@@ -142,7 +142,7 @@ export function buildReportHtml(report: PdfReportData): string {
   <div class="header-meta">
     <div><strong>Mentor's Name</strong> : ${mentorName}</div>
     <div><strong>Period</strong> : ${periodHeader}</div>
-    <div><strong>Child's Name</strong> : ${report.student.name}</div>
+    <div><strong>Student's Name</strong> : ${report.student.name}</div>
   </div>
 </div>
 <div class="report-title">Monthly Report</div>

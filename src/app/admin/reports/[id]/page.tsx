@@ -47,17 +47,7 @@ function formatDate(dateStr: string) {
   })
 }
 
-function PdfButton({ id }: { id: string }) {
-  return (
-    <a
-      href={`/api/reports/${id}/pdf`}
-      download
-      className="bg-[#2C1A0E] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#3d2512] transition-colors"
-    >
-      Download PDF
-    </a>
-  )
-}
+
 
 export default function AdminReportDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -68,6 +58,10 @@ export default function AdminReportDetailPage() {
   const [saved, setSaved] = useState(false)
   const [markingSent, setMarkingSent] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  
+  // Email sending states
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
   const [error, setError] = useState('')
 
   const [form, setForm] = useState({
@@ -153,12 +147,40 @@ export default function AdminReportDetailPage() {
     }
   }
 
+  const handleSendToParent = async () => {
+    if (!confirm('Are you sure you want to send this report to the parent?')) return
+    setSendingEmail(true)
+    setError('')
+    setPreviewUrl('')
+    try {
+      const res = await fetch(`/api/admin/reports/${id}/send`, { method: 'POST' })
+      const data = await res.json()
+      
+      if (!res.ok) {
+        setError(data.error || 'Failed to send email')
+        return
+      }
+      
+      setReport(prev => prev ? { ...prev, status: data.report.status } : data.report)
+      if (data.previewUrl) {
+        setPreviewUrl(data.previewUrl)
+      } else {
+        alert('Email sent successfully!')
+      }
+    } catch {
+      setError('Failed to send email')
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-[#FAFAF8]">
         <AdminNav />
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-[#6B5744] text-sm">Loading...</p>
+        <main className="flex-1 flex flex-col items-center justify-center text-[#6B5744]">
+          <div className="w-10 h-10 border-4 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-4 shadow-sm" />
+          <p className="text-[14px] font-bold tracking-wide">Loading report...</p>
         </main>
       </div>
     )
@@ -176,102 +198,127 @@ export default function AdminReportDetailPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#FAFAF8]">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
-      <main className="flex-1 p-8">
-        <div className="max-w-2xl mx-auto">
-
+      <main className="flex-1 p-5 md:p-8 overflow-x-hidden">
+        <div className="max-w-3xl mx-auto">
           {/* Top bar */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Link href="/admin/reports" className="text-[#6B5744] hover:text-[#2C1A0E] text-lg">←</Link>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <Link href="/admin/reports" className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-[#E8D5B7]/40 text-[#6B5744] hover:text-[#F5A623] hover:border-[#F5A623]/40 hover:-translate-x-1 transition-all">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+              </Link>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-semibold text-[#2C1A0E]">Report Detail</h1>
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_STYLE[report.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-[#2C1A0E] tracking-tight">Report Detail</h1>
+                  <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${STATUS_STYLE[report.status] ?? 'bg-gray-100 text-gray-500'}`}>
                     {STATUS_LABEL[report.status] ?? report.status}
                   </span>
                 </div>
-                <p className="text-sm text-[#6B5744] mt-0.5">
-                  {report.student.name} · {formatPeriod(report.period_start, report.period_end)}
+                <p className="text-[14px] font-medium text-[#6B5744] mt-1">
+                  {report.student.name} <span className="text-[#E8D5B7] mx-1">|</span> {formatPeriod(report.period_start, report.period_end)}
                 </p>
               </div>
             </div>
-            <PdfButton id={id} />
+            <a
+              href={`/api/reports/${id}/pdf`}
+              download
+              className="bg-[#2C1A0E] text-white text-[13px] font-bold px-5 py-2.5 rounded-xl hover:bg-[#3d2512] hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              Download PDF
+            </a>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-2xl text-[13px] font-medium text-red-700 animate-in fade-in slide-in-from-top-2">
               {error}
             </div>
           )}
           {saved && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            <div className="mb-6 p-4 bg-green-50/80 backdrop-blur-sm border border-green-200/50 rounded-2xl text-[13px] font-bold text-green-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
               Changes saved.
             </div>
           )}
+          {previewUrl && (
+            <div className="mb-6 p-4 bg-[#F5A623]/10 backdrop-blur-sm border border-[#F5A623]/30 rounded-2xl text-[13px] font-bold text-[#2C1A0E] flex flex-col gap-2 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-[#F5A623]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                Email sent successfully (Test Mode)!
+              </div>
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-[#F5A623] hover:underline flex items-center gap-1 font-medium ml-7">
+                Click here to preview the sent email in Ethereal
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+              </a>
+            </div>
+          )}
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Header info */}
-            <div className="bg-white rounded-lg border border-[#E8D5B7] p-5">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-xs text-[#6B5744] mb-0.5">Child</p>
-                  <p className="font-medium text-[#2C1A0E]">{report.student.name}</p>
+            <div className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="bg-[#FAFAF8] p-4 rounded-2xl border border-[#E8D5B7]/40">
+                  <p className="text-[11px] font-bold tracking-wider uppercase text-[#B0957A]">Student</p>
+                  <p className="font-bold text-[#2C1A0E] mt-1">{report.student.name}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-[#6B5744] mb-0.5">Program</p>
-                  <p className="font-medium text-[#2C1A0E]">{report.student.program}</p>
+                <div className="bg-[#FAFAF8] p-4 rounded-2xl border border-[#E8D5B7]/40">
+                  <p className="text-[11px] font-bold tracking-wider uppercase text-[#B0957A]">Program</p>
+                  <p className="font-bold text-[#2C1A0E] mt-1">{report.student.program}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-[#6B5744] mb-0.5">Mentor</p>
-                  <p className="font-medium text-[#2C1A0E]">{report.mentor?.name ?? '—'}</p>
+                <div className="bg-[#FAFAF8] p-4 rounded-2xl border border-[#E8D5B7]/40">
+                  <p className="text-[11px] font-bold tracking-wider uppercase text-[#B0957A]">Mentor</p>
+                  <p className="font-bold text-[#2C1A0E] mt-1">{report.mentor?.name ?? '—'}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-[#6B5744] mb-0.5">Period</p>
-                  <p className="font-medium text-[#2C1A0E]">{formatPeriod(report.period_start, report.period_end)}</p>
+                <div className="bg-[#FAFAF8] p-4 rounded-2xl border border-[#E8D5B7]/40">
+                  <p className="text-[11px] font-bold tracking-wider uppercase text-[#B0957A]">Period</p>
+                  <p className="font-bold text-[#2C1A0E] mt-1 text-xs">{formatPeriod(report.period_start, report.period_end)}</p>
                 </div>
               </div>
             </div>
 
-            {/* Section 1 — editable */}
-            <div className="bg-white rounded-lg border border-[#E8D5B7] p-5">
-              <h2 className="text-sm font-semibold text-[#2C1A0E] mb-3">1. Learning Achievements This Period</h2>
+            {/* Section 1 */}
+            <div className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 p-6">
+              <h2 className="text-[15px] font-bold text-[#2C1A0E] mb-3">1. Learning Achievements This Period</h2>
               <textarea
                 value={form.summary_achievements}
                 onChange={e => setForm(f => ({ ...f, summary_achievements: e.target.value }))}
                 rows={5}
                 placeholder="Learning achievements this period..."
-                className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] resize-none"
+                className="w-full bg-[#FAFAF8] border border-[#E8D5B7]/60 rounded-2xl px-4 py-3 text-[14px] leading-relaxed text-[#2C1A0E] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:border-[#F5A623] focus:bg-white resize-none transition-all"
               />
             </div>
 
-            {/* Section 2 — Journal, read-only */}
-            <div className="bg-white rounded-lg border border-[#E8D5B7] p-5">
-              <h2 className="text-sm font-semibold text-[#2C1A0E] mb-1">2. Journal of Activities</h2>
-              <p className="text-xs text-[#6B5744] mb-3">Auto-filled from sessions in this period</p>
+            {/* Section 2 */}
+            <div className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 p-6">
+              <div className="mb-4">
+                <h2 className="text-[15px] font-bold text-[#2C1A0E] mb-1">2. Journal of Activities</h2>
+                <p className="text-[12px] font-medium text-[#B0957A]">Auto-filled from sessions in this period</p>
+              </div>
               {report.sessions.length === 0 ? (
-                <p className="text-sm text-[#6B5744] italic">No sessions recorded in this period.</p>
+                <div className="bg-[#FAFAF8] rounded-2xl border border-[#E8D5B7]/40 py-8 text-center">
+                  <p className="text-[13px] font-medium text-[#B0957A]">No sessions recorded in this period.</p>
+                </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs min-w-[480px]">
+                <div className="overflow-x-auto -mx-2 px-2">
+                  <table className="w-full text-left min-w-[500px]">
                     <thead>
-                      <tr className="border-b border-[#E8D5B7]">
-                        <th className="text-left py-2 pr-3 font-medium text-[#6B5744] w-[20%]">Session</th>
-                        <th className="text-left py-2 pr-3 font-medium text-[#6B5744] w-[30%]">Activity</th>
-                        <th className="text-left py-2 font-medium text-[#6B5744] w-[50%]">Observation Results</th>
+                      <tr className="border-b border-[#E8D5B7]/40">
+                        <th className="py-3 px-2 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase w-[20%]">Session</th>
+                        <th className="py-3 px-2 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase w-[30%]">Activity</th>
+                        <th className="py-3 px-2 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase w-[50%]">Observation Results</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-[#E8D5B7]/20">
                       {report.sessions.map((session, i) => (
-                        <tr key={session.id} className="border-b border-[#E8D5B7] last:border-0">
-                          <td className="py-2.5 pr-3 text-[#6B5744] align-top whitespace-nowrap">
-                            <span className="font-medium">Session {i + 1}</span>
+                        <tr key={session.id} className="hover:bg-[#FAFAF8]/50 transition-colors">
+                          <td className="py-4 px-2 align-top">
+                            <span className="font-bold text-[#2C1A0E] text-[13px] bg-[#F5A623]/10 px-2 py-0.5 rounded-md inline-block mb-1">Session {i + 1}</span>
                             <br />
-                            <span className="text-[#6B5744]">{formatDate(session.date)}</span>
+                            <span className="text-[12px] font-medium text-[#8a7662]">{formatDate(session.date)}</span>
                           </td>
-                          <td className="py-2.5 pr-3 text-[#2C1A0E] align-top">{session.activity}</td>
-                          <td className="py-2.5 text-[#2C1A0E] align-top">{session.observation}</td>
+                          <td className="py-4 px-2 text-[#2C1A0E] text-[13px] leading-relaxed align-top">{session.activity}</td>
+                          <td className="py-4 px-2 text-[#2C1A0E] text-[13px] leading-relaxed align-top">{session.observation}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -280,73 +327,73 @@ export default function AdminReportDetailPage() {
               )}
             </div>
 
-            {/* Section 3 — editable */}
-            <div className="bg-white rounded-lg border border-[#E8D5B7] p-5">
-              <h2 className="text-sm font-semibold text-[#2C1A0E] mb-3">3. Overall Development Observation</h2>
+            {/* Section 3 */}
+            <div className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 p-6">
+              <h2 className="text-[15px] font-bold text-[#2C1A0E] mb-3">3. Overall Development Observation</h2>
               <textarea
                 value={form.summary_general}
                 onChange={e => setForm(f => ({ ...f, summary_general: e.target.value }))}
                 rows={5}
                 placeholder="Overall development observation..."
-                className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] resize-none"
+                className="w-full bg-[#FAFAF8] border border-[#E8D5B7]/60 rounded-2xl px-4 py-3 text-[14px] leading-relaxed text-[#2C1A0E] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:border-[#F5A623] focus:bg-white resize-none transition-all"
               />
             </div>
 
-            {/* Section 4 — editable */}
-            <div className="bg-white rounded-lg border border-[#E8D5B7] p-5">
-              <h2 className="text-sm font-semibold text-[#2C1A0E] mb-3">4. Notes for Parents</h2>
+            {/* Section 4 */}
+            <div className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 p-6">
+              <h2 className="text-[15px] font-bold text-[#2C1A0E] mb-3">4. Notes for Parents</h2>
               <textarea
                 value={form.summary_parents}
                 onChange={e => setForm(f => ({ ...f, summary_parents: e.target.value }))}
                 rows={5}
                 placeholder="Notes for parents..."
-                className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F5A623] resize-none"
+                className="w-full bg-[#FAFAF8] border border-[#E8D5B7]/60 rounded-2xl px-4 py-3 text-[14px] leading-relaxed text-[#2C1A0E] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:border-[#F5A623] focus:bg-white resize-none transition-all"
               />
             </div>
 
-            {/* Save */}
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full bg-[#F5A623] text-[#2C1A0E] font-bold py-3 rounded-lg text-sm hover:bg-[#E09615] disabled:opacity-50 transition-colors"
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-
-            {/* Bottom actions */}
-            <div className="flex gap-3">
-              <PdfButton id={id} />
-
-              {report.status === 'done' && (
-                <button
-                  onClick={handleMarkSent}
-                  disabled={markingSent}
-                  className="bg-[#F5A623] text-[#2C1A0E] text-sm font-bold px-4 py-2 rounded-lg hover:bg-[#E09615] disabled:opacity-50 transition-colors"
-                >
-                  {markingSent ? 'Updating...' : 'Mark as Sent'}
-                </button>
-              )}
-
+            {/* Actions */}
+            <div className="flex flex-col gap-4 pt-2">
               <button
-                disabled
-                className="text-sm font-medium px-4 py-2 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed"
-                title="Coming soon"
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full bg-[#F5A623] text-[#2C1A0E] font-bold py-3.5 rounded-2xl text-[14px] shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-[#F6AF3C] disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm transition-all"
               >
-                Send to Parent
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
 
-              {report.status === 'draft' && (
+              <div className="flex flex-wrap items-center gap-3">
+                {report.status === 'done' && (
+                  <button
+                    onClick={handleMarkSent}
+                    disabled={markingSent}
+                    className="flex-1 bg-white border border-[#E8D5B7] text-[#2C1A0E] text-[13px] font-bold px-4 py-3 rounded-xl shadow-sm hover:bg-[#FAFAF8] disabled:opacity-50 transition-all text-center"
+                  >
+                    {markingSent ? 'Updating...' : 'Mark as Sent'}
+                  </button>
+                )}
+                
+                {(report.status === 'done' || report.status === 'sent') && (
+                  <button
+                    onClick={handleSendToParent}
+                    disabled={sendingEmail}
+                    className="flex-1 bg-[#2C1A0E] text-white text-[13px] font-bold px-4 py-3 rounded-xl shadow-sm hover:bg-[#3d2512] disabled:opacity-50 transition-all text-center flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    {sendingEmail ? 'Sending...' : (report.status === 'sent' ? 'Resend to Parent' : 'Send to Parent')}
+                  </button>
+                )}
+
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="ml-auto text-sm font-medium px-4 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                  className="bg-red-50 text-red-600 text-[13px] font-bold px-5 py-3 rounded-xl hover:bg-red-100 disabled:opacity-50 transition-colors ml-auto flex items-center gap-2"
                 >
-                  {deleting ? 'Deleting...' : 'Delete Report'}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  Delete Report
                 </button>
-              )}
+              </div>
             </div>
           </div>
-
         </div>
       </main>
     </div>
