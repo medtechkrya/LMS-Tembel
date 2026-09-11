@@ -2,6 +2,11 @@
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+    outputFileTracingIncludes: {
+      '/api/**/*': ['./node_modules/@sparticuz/chromium/bin/**'],
+      '/admin/reports/**/*': ['./node_modules/@sparticuz/chromium/bin/**'],
+      '/reports/**/*': ['./node_modules/@sparticuz/chromium/bin/**'],
+    },
   },
   webpack: (config, { isServer }) => {
     if (isServer) {

@@ -188,10 +188,31 @@ export function buildReportHtml(report: PdfReportData): string {
 </html>`
 }
 
+function findChromiumBinPath(): string | undefined {
+  const possiblePaths = [
+    path.join(process.cwd(), 'node_modules/@sparticuz/chromium/bin'),
+    path.join(process.cwd(), '.next/server/node_modules/@sparticuz/chromium/bin'),
+    path.join(process.cwd(), '.next/standalone/node_modules/@sparticuz/chromium/bin'),
+    '/var/task/node_modules/@sparticuz/chromium/bin',
+    '/var/task/.next/server/node_modules/@sparticuz/chromium/bin',
+    '/var/task/.next/standalone/node_modules/@sparticuz/chromium/bin',
+  ]
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p
+  }
+  return undefined
+}
+
 async function getExecutablePath(): Promise<string> {
-  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION)
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_VERSION ||
+    process.env.AWS_EXECUTION_ENV
+  )
+
   if (isServerless) {
-    return await chromium.executablePath()
+    const binPath = findChromiumBinPath()
+    return await chromium.executablePath(binPath)
   }
 
   // Local environments detection
@@ -231,7 +252,11 @@ async function getExecutablePath(): Promise<string> {
 
 export async function generatePdfBuffer(report: PdfReportData): Promise<Buffer> {
   const html = buildReportHtml(report)
-  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION)
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_VERSION ||
+    process.env.AWS_EXECUTION_ENV
+  )
   const executablePath = await getExecutablePath()
 
   const browser = await puppeteer.launch({
