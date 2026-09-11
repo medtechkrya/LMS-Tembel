@@ -1,7 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Jika ingin static export: output: 'export',
-  // Jika untuk Vercel / Node server: output: 'standalone',
+  experimental: {
+    serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [
+        ...(Array.isArray(config.externals) ? config.externals : []),
+        '@sparticuz/chromium',
+        'puppeteer-core',
+      ];
+    }
+    return config;
+  },
   typescript: {
     // Mengabaikan error TypeScript saat proses build
     ignoreBuildErrors: true,
