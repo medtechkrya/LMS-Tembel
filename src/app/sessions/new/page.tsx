@@ -67,21 +67,72 @@ export default function NewSessionPage() {
     setUploading(true)
     setError('')
 
-    const fd = new FormData()
-    fd.append('file', file)
-
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Upload failed / Upload gagal')
-        return
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const MAX_WIDTH = 2000
+          const MAX_HEIGHT = 2000
+          let width = img.width
+          let height = img.height
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width
+              width = MAX_WIDTH
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height
+              height = MAX_HEIGHT
+            }
+          }
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0, width, height)
+          
+          canvas.toBlob(async (blob) => {
+            if (!blob) {
+              setError('Failed to compress image')
+              setUploading(false)
+              return
+            }
+            const fd = new FormData()
+            const safeName = file.name.replace(/[^a-zA-Z0-9]/g, '_')
+            fd.append('file', new File([blob], safeName + ".webp", { type: 'image/webp' }))
+            
+            try {
+              const res = await fetch('/api/upload', { method: 'POST', body: fd })
+              const data = await res.json()
+              if (!res.ok) {
+                setError(data.error || 'Upload failed / Upload gagal')
+                return
+              }
+              setPhotoPath(data.path)
+              setPhotoName(file.name)
+            } catch {
+              setError('Upload failed / Upload gagal')
+            } finally {
+              setUploading(false)
+            }
+          }, 'image/webp', 0.8)
+        }
+        img.onerror = () => {
+          setError('Invalid image file')
+          setUploading(false)
+        }
       }
-      setPhotoPath(data.path)
-      setPhotoName(file.name)
+      reader.onerror = () => {
+        setError('Failed to read image file')
+        setUploading(false)
+      }
     } catch {
       setError('Upload failed / Upload gagal')
-    } finally {
       setUploading(false)
     }
   }

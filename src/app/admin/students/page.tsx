@@ -115,7 +115,7 @@ export default function AdminStudentsPage() {
               <input
                 value={form.program}
                 onChange={e => setForm(f => ({ ...f, program: e.target.value }))}
-                placeholder="e.g. Matematika Dasar"
+                placeholder="e.g. Teman Belajar / Kryacademia"
                 className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A623]"
               />
             </div>

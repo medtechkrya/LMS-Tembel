@@ -2,16 +2,38 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 export default function DashboardPage() {
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/mentor-logout', { method: 'POST' })
+      router.push('/mentor-login')
+      router.refresh()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#FAFAF8] flex flex-col items-center justify-center px-6 relative overflow-hidden">
+      {/* Logout Button */}
+      <button 
+        onClick={handleLogout}
+        className="absolute top-6 right-6 sm:top-8 sm:right-8 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[#6B5744] bg-white border border-[#E8D5B7]/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:text-[#2C1A0E] transition-all z-20"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+        <span className="hidden sm:inline">Log Out</span>
+      </button>
+
       {/* Subtle background decoration */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-tr from-[#F5A623]/10 to-transparent rounded-full blur-3xl -z-10" />
       <div className="absolute top-0 right-0 w-64 h-64 bg-[#E8D5B7]/20 rounded-full blur-3xl -z-10" />
 
       {/* Logo & title */}
-      <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-lg">
+      <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-lg mt-8 sm:mt-0">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 mb-10">
           <Image src="/Logo-Teman-Belajar.png" alt="Teman Belajar" width={160} height={160} className="w-32 h-32 sm:w-40 sm:h-40 object-contain drop-shadow-sm hover:scale-105 transition-transform duration-500" />
           <div className="hidden sm:block w-px h-24 bg-gradient-to-b from-transparent via-[#E8D5B7] to-transparent rounded-full" />
@@ -34,12 +56,12 @@ export default function DashboardPage() {
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-bl-full transition-transform group-hover:scale-110" />
           <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mr-5 shrink-0 shadow-inner">
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-bold tracking-wide mb-1">Recap Session</h2>
-            <p className="text-sm font-medium text-[#2C1A0E]/70 leading-snug">
-              Input new mentoring sessions and student attendance.
+            <p className="text-sm font-medium text-[#2C1A0E]/80 leading-snug">
+              Log student evaluation and attendance immediately after class.
             </p>
           </div>
           <div className="ml-4 shrink-0">

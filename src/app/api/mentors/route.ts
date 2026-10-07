@@ -5,18 +5,25 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const mentors = await prisma.mentor.findMany({
-    select: { id: true, name: true, status: true },
     orderBy: { name: 'asc' },
   })
   return NextResponse.json(mentors)
 }
 
 export async function POST(req: NextRequest) {
-  const { name } = await req.json()
+  const { name, core_skill, country, language, photo_path } = await req.json()
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 })
   }
-  const mentor = await prisma.mentor.create({ data: { name: name.trim() } })
+  const mentor = await prisma.mentor.create({ 
+    data: { 
+      name: name.trim(),
+      core_skill: core_skill?.trim() || null,
+      country: country?.trim() || null,
+      language: language?.trim() || null,
+      photo_path: photo_path?.trim() || null,
+    } 
+  })
   return NextResponse.json(mentor, { status: 201 })
 }
 

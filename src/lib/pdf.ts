@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer-core'
+import puppeteer from 'puppeteer'
+import puppeteerCore from 'puppeteer-core'
 import chromium from '@sparticuz/chromium'
 import fs from 'fs'
 import path from 'path'
@@ -188,92 +189,25 @@ export function buildReportHtml(report: PdfReportData): string {
 </html>`
 }
 
-function findChromiumBinPath(): string | undefined {
-  const possiblePaths = [
-    path.join(process.cwd(), 'node_modules/@sparticuz/chromium/bin'),
-    path.join(process.cwd(), '.next/server/node_modules/@sparticuz/chromium/bin'),
-    path.join(process.cwd(), '.next/standalone/node_modules/@sparticuz/chromium/bin'),
-    '/var/task/node_modules/@sparticuz/chromium/bin',
-    '/var/task/.next/server/node_modules/@sparticuz/chromium/bin',
-    '/var/task/.next/standalone/node_modules/@sparticuz/chromium/bin',
-  ]
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) return p
-  }
-  return undefined
-}
-
-async function getExecutablePath(): Promise<string> {
-  const isServerless = Boolean(
-    process.env.VERCEL ||
-    process.env.AWS_LAMBDA_FUNCTION_VERSION ||
-    process.env.AWS_EXECUTION_ENV
-  )
-
-  if (isServerless) {
-    const binPath = findChromiumBinPath()
-    return await chromium.executablePath(binPath)
-  }
-
-  // Local environments detection
-  if (process.platform === 'darwin') {
-    const macPaths = [
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
-      '/Applications/Chromium.app/Contents/MacOS/Chromium',
-      '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
-      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-    ]
-    for (const p of macPaths) {
-      if (fs.existsSync(p)) return p
-    }
-  } else if (process.platform === 'win32') {
-    const winPaths = [
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-    ]
-    for (const p of winPaths) {
-      if (fs.existsSync(p)) return p
-    }
-  } else {
-    const linuxPaths = [
-      '/usr/bin/google-chrome',
-      '/usr/bin/chromium',
-      '/usr/bin/chromium-browser',
-    ]
-    for (const p of linuxPaths) {
-      if (fs.existsSync(p)) return p
-    }
-  }
-
-  return await chromium.executablePath()
-}
-
 export async function generatePdfBuffer(report: PdfReportData): Promise<Buffer> {
   const html = buildReportHtml(report)
-  const isServerless = Boolean(
-    process.env.VERCEL ||
-    process.env.AWS_LAMBDA_FUNCTION_VERSION ||
-    process.env.AWS_EXECUTION_ENV
-  )
-  const executablePath = await getExecutablePath()
-
-  const browser = await puppeteer.launch({
-    args: isServerless
-      ? chromium.args
-      : [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-        ],
-    executablePath,
-    headless: true,
-  })
+  
+  let browser;
+  if (process.env.NODE_ENV === 'production') {
+    // Gunakan sparticuz + puppeteer-core di server (production/Vercel)
+    browser = await puppeteerCore.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    })
+  } else {
+    // Gunakan puppeteer standar di localhost/development
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    })
+  }
 
   try {
     const page = await browser.newPage()
