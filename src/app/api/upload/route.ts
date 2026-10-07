@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { put } from '@vercel/blob'
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData()
@@ -17,12 +16,14 @@ export async function POST(req: NextRequest) {
 
   const ext = file.name.split('.').pop() || 'jpg'
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads')
 
-  await mkdir(uploadDir, { recursive: true })
-
-  const bytes = await file.arrayBuffer()
-  await writeFile(path.join(uploadDir, filename), Buffer.from(bytes))
-
-  return NextResponse.json({ path: `/uploads/${filename}` })
+  try {
+    const blob = await put(`uploads/${filename}`, file, {
+      access: 'public',
+    });
+    return NextResponse.json({ path: blob.url })
+  } catch (err: any) {
+    console.error("Vercel Blob Upload Error:", err)
+    return NextResponse.json({ error: err.message || 'Failed to upload to Vercel Blob. Make sure BLOB_READ_WRITE_TOKEN is set.' }, { status: 500 })
+  }
 }
