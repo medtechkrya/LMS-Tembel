@@ -19,11 +19,15 @@ model Student {
 }
 
 model Mentor {
-  id       String    @id @default(cuid())
-  name     String
-  status   String    @default("active")
-  sessions Session[]
-  reports  Report[]
+  id         String    @id @default(cuid())
+  name       String
+  status     String    @default("active")
+  core_skill String?
+  photo_path String?   @db.Text
+  country    String?
+  language   String?
+  sessions   Session[]
+  reports    Report[]
 
   @@map("mentor")
 }
@@ -34,10 +38,10 @@ model Session {
   mentor_id   String?
   date        DateTime
   attendance  String
-  activity    String   @db.Text
-  observation String   @db.Text
-  photo_path  String?  @db.Text
-  next_step   String?  @db.Text
+  activity    String  @db.Text
+  observation String  @db.Text
+  photo_path  String? @db.Text
+  next_step   String? @db.Text
   student     Student  @relation(fields: [student_id], references: [id])
   mentor      Mentor?  @relation(fields: [mentor_id], references: [id])
 
@@ -50,9 +54,9 @@ model Report {
   mentor_id            String?
   period_start         DateTime
   period_end           DateTime
-  summary_achievements String?  @db.Text
-  summary_general      String?  @db.Text
-  summary_parents      String?  @db.Text
+  summary_achievements String? @db.Text
+  summary_general      String? @db.Text
+  summary_parents      String? @db.Text
   status               String   @default("draft")
   student              Student  @relation(fields: [student_id], references: [id])
   mentor               Mentor?  @relation(fields: [mentor_id], references: [id])
