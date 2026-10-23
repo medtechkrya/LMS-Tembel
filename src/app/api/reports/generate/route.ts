@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
-import { getAvailablePeriods } from '@/lib/period'
+import { getAvailablePeriods, getDefaultReportPeriod } from '@/lib/period'
 
 export async function POST(req: NextRequest) {
   const { student_id, period_key } = await req.json()
@@ -15,9 +15,14 @@ export async function POST(req: NextRequest) {
   }
 
   const periods = getAvailablePeriods()
+  const defaultPeriod = getDefaultReportPeriod()
+  if (!periods.some(p => p.key === defaultPeriod.key)) {
+    periods.unshift(defaultPeriod)
+  }
+
   const period = period_key 
     ? periods.find(p => p.key === period_key) 
-    : periods[0]
+    : defaultPeriod
 
   if (!period) {
     return NextResponse.json({ error: 'Invalid period_key' }, { status: 400 })

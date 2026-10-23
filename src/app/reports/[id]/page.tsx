@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import MentorNav from '@/components/MentorNav'
 import LoadingState from '@/components/LoadingState'
+import { formatPeriod } from '@/lib/period'
 import { useConfirm } from '@/components/ConfirmModal'
 interface Session {
   id: string
@@ -33,11 +34,7 @@ interface Report {
   sessions: Session[]
 }
 
-function formatPeriod(start: string, end: string) {
-  const s = new Date(start)
-  const e = new Date(end)
-  return `${s.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })} – ${e.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`
-}
+
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', {

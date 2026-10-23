@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import MentorNav from '@/components/MentorNav'
 import LoadingState from '@/components/LoadingState'
-import { getAvailablePeriods, getCurrentPeriod, formatPeriod, isSamePeriodStart } from '@/lib/period'
+import { getAvailablePeriods, getDefaultReportPeriod, formatPeriod, isSamePeriodStart } from '@/lib/period'
 
 interface Student {
   id: string
@@ -62,7 +62,11 @@ export default function ReportsPage() {
   const [error, setError] = useState('')
   
   const periods = getAvailablePeriods()
-  const [selectedPeriodKey, setSelectedPeriodKey] = useState(getCurrentPeriod().key)
+  const defaultPeriod = getDefaultReportPeriod()
+  if (!periods.some(p => p.key === defaultPeriod.key)) {
+    periods.unshift(defaultPeriod)
+  }
+  const [selectedPeriodKey, setSelectedPeriodKey] = useState(defaultPeriod.key)
 
   useEffect(() => {
     Promise.all([

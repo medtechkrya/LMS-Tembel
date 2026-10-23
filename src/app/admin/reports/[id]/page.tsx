@@ -6,6 +6,7 @@ import Link from 'next/link'
 import AdminNav from '../../_nav'
 import { useConfirm } from '@/components/ConfirmModal'
 import LoadingState from '@/components/LoadingState'
+import { formatPeriod } from '@/lib/period'
 
 interface Session {
   id: string
@@ -34,11 +35,7 @@ const STATUS_STYLE: Record<string, string> = {
   sent: 'bg-[#CCE5FF] text-[#004085]',
 }
 
-function formatPeriod(start: string, end: string) {
-  const s = new Date(start)
-  const e = new Date(end)
-  return `${s.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })} – ${e.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`
-}
+
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', {

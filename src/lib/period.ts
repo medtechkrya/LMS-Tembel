@@ -8,9 +8,9 @@ export interface Period {
 /**
  * Returns the standard format for a period, e.g., "Aug 26 - Sep 25, 2026"
  */
-export function formatPeriod(start: Date, end: Date): string {
-  const s = start.toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-  const e = end.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+export function formatPeriod(start: Date | string, end: Date | string): string {
+  const s = new Date(start).toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const e = new Date(end).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   return `${s} – ${e}`
 }
 
@@ -83,3 +83,34 @@ export function getAvailablePeriods(monthsBack = 6): Period[] {
 export function getCurrentPeriod(): Period {
   return getAvailablePeriods(0)[0]
 }
+
+/**
+ * Returns the default period for Monthly Reports.
+ * Mentors write monthly reports for a learning cycle (e.g. Sep 26 – Oct 25).
+ *
+ * Switching rule:
+ * Default berganti setiap tanggal 1 awal bulan:
+ * - Selama bulan Oktober (1–31 Okt): default adalah periode Sep 26 – Oct 25
+ * - Selama bulan November (1–30 Nov): default adalah periode Oct 26 – Nov 25
+ * - Selama bulan Desember (1–31 Des): default adalah periode Nov 26 – Dec 25
+ *
+ * Dengan begitu, mentor yang sesinya selesai sebelum tanggal 25 tidak perlu menunggu,
+ * dan di tanggal 26–31 sistem tetap default di periode bulan tersebut tanpa loncat duluan.
+ */
+export function getDefaultReportPeriod(now = new Date()): Period {
+  const d = new Date(now)
+  const endYear = d.getFullYear()
+  const endMonth = d.getMonth() // 0-indexed: 0 = Jan, 9 = Oct, 10 = Nov
+
+  const start = new Date(Date.UTC(endYear, endMonth - 1, 26, 0, 0, 0, 0))
+  const end = new Date(Date.UTC(endYear, endMonth, 25, 23, 59, 59, 999))
+  const key = `${end.getUTCFullYear()}-${(end.getUTCMonth() + 1).toString().padStart(2, '0')}`
+
+  return {
+    key,
+    label: formatPeriod(start, end),
+    start,
+    end,
+  }
+}
+
