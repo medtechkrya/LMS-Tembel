@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import AdminNav from '../_nav'
+import { useConfirm } from '@/components/ConfirmModal'
+import LoadingState from '@/components/LoadingState'
 
 interface Mentor {
   id: string
   name: string
+  pin: string | null
   status: string
   core_skill: string | null
   country: string | null
@@ -66,11 +69,12 @@ const compressAndUploadImage = async (file: File): Promise<string> => {
 }
 
 export default function AdminMentorsPage() {
+  const { confirm, ConfirmDialog } = useConfirm()
   const [mentors, setMentors] = useState<Mentor[]>([])
   const [loading, setLoading] = useState(true)
 
   // Add form state
-  const [form, setForm] = useState({ name: '', core_skill: '', country: '', language: '', photo_path: '' })
+  const [form, setForm] = useState({ name: '', pin: '', core_skill: '', country: '', language: '', photo_path: '' })
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -78,14 +82,50 @@ export default function AdminMentorsPage() {
   // Edit/Expand state
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', core_skill: '', country: '', language: '', photo_path: '' })
+  const [editForm, setEditForm] = useState({ name: '', pin: '', core_skill: '', country: '', language: '', photo_path: '' })
   const [saving, setSaving] = useState(false)
   const [editUploadingPhoto, setEditUploadingPhoto] = useState(false)
 
+  // Copy feedback state
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const createUniquePin = (list: Mentor[]) => {
+    const used = new Set(list.map(m => m.pin).filter(Boolean))
+    let candidate = ''
+    do {
+      candidate = String(Math.floor(100000 + Math.random() * 900000))
+    } while (used.has(candidate))
+    return candidate
+  }
+
   const load = () =>
-    fetch('/api/mentors').then(r => r.json()).then(setMentors).finally(() => setLoading(false))
+    fetch('/api/mentors')
+      .then(r => r.json())
+      .then((data: Mentor[]) => {
+        setMentors(data)
+        setForm(prev => prev.pin ? prev : { ...prev, pin: createUniquePin(data) })
+      })
+      .finally(() => setLoading(false))
 
   useEffect(() => { load() }, [])
+
+  const copyPin = (id: string, pin: string | null) => {
+    if (!pin) return
+    navigator.clipboard.writeText(pin)
+    setCopiedId(id)
+    setTimeout(() => {
+      setCopiedId(prev => (prev === id ? null : prev))
+    }, 2000)
+  }
+
+  const findDuplicateMentor = (pinValue: string, excludeId?: string) => {
+    const clean = pinValue.trim()
+    if (!clean) return null
+    return mentors.find(m => m.pin === clean && m.id !== excludeId) || null
+  }
+
+  const addPinDuplicate = findDuplicateMentor(form.pin)
+  const editPinDuplicate = editingId ? findDuplicateMentor(editForm.pin, editingId) : null
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
     const file = e.target.files?.[0]
@@ -98,7 +138,7 @@ export default function AdminMentorsPage() {
     try {
       const url = await compressAndUploadImage(file)
       setFormState(prev => ({ ...prev, photo_path: url }))
-    } catch (err) {
+    } catch {
       setError('Failed to upload and compress photo')
     } finally {
       setUploadState(false)
@@ -107,7 +147,11 @@ export default function AdminMentorsPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name.trim() || !form.core_skill.trim() || !form.country.trim() || !form.language.trim()) return
+    if (!form.name.trim() || !form.pin.trim() || !form.core_skill.trim() || !form.country.trim() || !form.language.trim()) return
+    if (addPinDuplicate) {
+      setError(`PIN "${form.pin}" is already used by ${addPinDuplicate.name}.`)
+      return
+    }
     setAdding(true)
     setError('')
     try {
@@ -120,7 +164,16 @@ export default function AdminMentorsPage() {
         setError((await res.json()).error || 'Failed to add')
         return
       }
-      setForm({ name: '', core_skill: '', country: '', language: '', photo_path: '' })
+      const created = await res.json()
+      const updatedList = [...mentors, created]
+      setForm({
+        name: '',
+        pin: createUniquePin(updatedList),
+        core_skill: '',
+        country: '',
+        language: '',
+        photo_path: '',
+      })
       load()
     } catch {
       setError('Failed to add mentor')
@@ -149,6 +202,7 @@ export default function AdminMentorsPage() {
     setExpandedId(m.id)
     setEditForm({ 
       name: m.name, 
+      pin: m.pin || createUniquePin(mentors),
       core_skill: m.core_skill || '', 
       country: m.country || '', 
       language: m.language || '', 
@@ -157,8 +211,13 @@ export default function AdminMentorsPage() {
   }
 
   const handleSaveEdit = async (id: string) => {
-    if (!editForm.name.trim() || !editForm.core_skill.trim() || !editForm.country.trim() || !editForm.language.trim()) return
+    if (!editForm.name.trim() || !editForm.pin.trim() || !editForm.core_skill.trim() || !editForm.country.trim() || !editForm.language.trim()) return
+    if (editPinDuplicate) {
+      setError(`PIN "${editForm.pin}" is already used by ${editPinDuplicate.name}.`)
+      return
+    }
     setSaving(true)
+    setError('')
     try {
       const res = await fetch(`/api/admin/mentors/${id}`, {
         method: 'PATCH',
@@ -177,7 +236,13 @@ export default function AdminMentorsPage() {
   }
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete mentor "${name}"?`)) return
+    const ok = await confirm({
+      title: 'Delete Mentor',
+      message: `Archive mentor "${name}"? Their past sessions and reports will be preserved.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
     try {
       await fetch('/api/mentors', {
         method: 'DELETE',
@@ -198,13 +263,14 @@ export default function AdminMentorsPage() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
+      <ConfirmDialog />
       <main className="flex-1 p-5 md:p-8 max-w-5xl">
         <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6">Manage Mentors</h1>
 
         <form onSubmit={handleAdd} className="bg-white rounded-xl border border-[#E8D5B7] p-5 mb-6">
           <h2 className="text-sm font-semibold text-[#2C1A0E] mb-4">Add New Mentor</h2>
           {error && (
-            <div className="mb-4 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">{error}</div>
+            <div className="mb-4 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-medium">{error}</div>
           )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -216,6 +282,32 @@ export default function AdminMentorsPage() {
                 placeholder="e.g. John Jaymark Daza"
                 className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A623]"
               />
+            </div>
+            <div>
+              <label className="block text-xs text-[#6B5744] mb-1">Login PIN (6 Digits, Unique) *</label>
+              <div className="flex gap-2">
+                <input
+                  value={form.pin}
+                  onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                  placeholder="e.g. 482910"
+                  maxLength={6}
+                  className={`flex-1 border rounded-lg px-3 py-2 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 ${
+                    addPinDuplicate ? 'border-red-400 focus:ring-red-300' : 'border-[#E8D5B7] focus:ring-[#F5A623]'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, pin: createUniquePin(mentors) }))}
+                  className="px-3 py-2 text-xs font-semibold rounded-lg border border-[#E8D5B7] bg-[#FAFAF8] text-[#6B5744] hover:text-[#2C1A0E] hover:bg-[#F5A623]/10 transition-colors whitespace-nowrap"
+                >
+                  Generate PIN
+                </button>
+              </div>
+              {addPinDuplicate && (
+                <p className="text-[11px] text-red-600 font-medium mt-1">
+                  PIN already used by {addPinDuplicate.name}. Please use another PIN.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs text-[#6B5744] mb-1">Core Skill *</label>
@@ -235,7 +327,7 @@ export default function AdminMentorsPage() {
                 className="w-full border border-[#E8D5B7] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A623]"
               />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-xs text-[#6B5744] mb-1">Languages *</label>
               <input
                 value={form.language}
@@ -265,7 +357,16 @@ export default function AdminMentorsPage() {
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={adding || uploadingPhoto || !form.name.trim() || !form.core_skill.trim() || !form.country.trim() || !form.language.trim()}
+              disabled={
+                adding ||
+                uploadingPhoto ||
+                !form.name.trim() ||
+                form.pin.trim().length < 4 ||
+                Boolean(addPinDuplicate) ||
+                !form.core_skill.trim() ||
+                !form.country.trim() ||
+                !form.language.trim()
+              }
               className="bg-[#F5A623] text-[#2C1A0E] text-sm font-bold px-6 py-2 rounded-lg hover:bg-[#E09615] disabled:opacity-50 transition-colors"
             >
               {adding ? 'Adding...' : 'Add Mentor'}
@@ -278,10 +379,7 @@ export default function AdminMentorsPage() {
             <h2 className="text-sm font-semibold text-[#2C1A0E]">{mentors.length} mentors</h2>
           </div>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
-              <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
-              <p className="text-sm font-medium">Memuat data mentor...</p>
-            </div>
+            <LoadingState className="py-20" />
           ) : mentors.length === 0 ? (
             <p className="text-sm text-[#6B5744] p-5">No mentors yet.</p>
           ) : (
@@ -289,12 +387,13 @@ export default function AdminMentorsPage() {
               {mentors.map(m => {
                 const isExpanded = expandedId === m.id
                 const isEditing = editingId === m.id
+                const isCopied = copiedId === m.id
 
                 return (
                   <div key={m.id} className="transition-all">
                     {/* Compact Row */}
                     <div 
-                      className={`flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-[#FAFAF8] transition-colors ${isExpanded ? 'bg-[#FAFAF8]' : ''}`}
+                      className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3 cursor-pointer hover:bg-[#FAFAF8] transition-colors ${isExpanded ? 'bg-[#FAFAF8]' : ''}`}
                       onClick={() => toggleExpand(m.id)}
                     >
                       <div className="flex items-center gap-3">
@@ -313,7 +412,39 @@ export default function AdminMentorsPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-2.5 sm:gap-3" onClick={e => e.stopPropagation()}>
+                        {/* PIN & Copy Button */}
+                        <div className="flex items-center bg-[#FAFAF8] border border-[#E8D5B7]/80 rounded-lg px-2.5 py-1 gap-2">
+                          <span className="text-[11px] font-semibold text-[#8a7662] uppercase">PIN:</span>
+                          <span className="text-xs font-mono font-bold tracking-wider text-[#2C1A0E]">
+                            {m.pin || '—'}
+                          </span>
+                          {m.pin && (
+                            <button
+                              type="button"
+                              onClick={() => copyPin(m.id, m.pin)}
+                              title="Copy PIN to share with mentor"
+                              className={`text-[11px] font-semibold px-2 py-0.5 rounded transition-all flex items-center gap-1 ${
+                                isCopied
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-[#F5A623]/15 text-[#2C1A0E] hover:bg-[#F5A623]/30'
+                              }`}
+                            >
+                              {isCopied ? (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                  Copied
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                  Copy
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+
                         {m.status === 'active' ? (
                           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-green-100 text-green-700">Active</span>
                         ) : (
@@ -327,7 +458,7 @@ export default function AdminMentorsPage() {
                         </button>
                         <button
                           onClick={() => startEdit(m)}
-                          className="text-xs text-[#F5A623] hover:text-[#E09615] transition-colors"
+                          className="text-xs text-[#F5A623] hover:text-[#E09615] transition-colors font-medium"
                         >
                           Edit
                         </button>
@@ -350,6 +481,31 @@ export default function AdminMentorsPage() {
                               <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="w-full border border-[#E8D5B7] rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A623]" />
                             </div>
                             <div>
+                              <label className="block text-[11px] font-semibold text-[#6B5744] mb-1 uppercase tracking-wider">Login PIN (6 Digits, Unique)</label>
+                              <div className="flex gap-2">
+                                <input
+                                  value={editForm.pin}
+                                  onChange={e => setEditForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                                  maxLength={6}
+                                  className={`flex-1 border rounded-lg px-2.5 py-1.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 ${
+                                    editPinDuplicate ? 'border-red-400 focus:ring-red-300' : 'border-[#E8D5B7] focus:ring-[#F5A623]'
+                                  }`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setEditForm(f => ({ ...f, pin: createUniquePin(mentors) }))}
+                                  className="px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-[#E8D5B7] bg-white text-[#6B5744] hover:text-[#2C1A0E] transition-colors whitespace-nowrap"
+                                >
+                                  Regenerate
+                                </button>
+                              </div>
+                              {editPinDuplicate && (
+                                <p className="text-[11px] text-red-600 font-medium mt-1">
+                                  PIN already used by {editPinDuplicate.name}.
+                                </p>
+                              )}
+                            </div>
+                            <div>
                               <label className="block text-[11px] font-semibold text-[#6B5744] mb-1 uppercase tracking-wider">Core Skill</label>
                               <input value={editForm.core_skill} onChange={e => setEditForm(f => ({ ...f, core_skill: e.target.value }))} className="w-full border border-[#E8D5B7] rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A623]" />
                             </div>
@@ -357,7 +513,7 @@ export default function AdminMentorsPage() {
                               <label className="block text-[11px] font-semibold text-[#6B5744] mb-1 uppercase tracking-wider">Country of Origin</label>
                               <input value={editForm.country} onChange={e => setEditForm(f => ({ ...f, country: e.target.value }))} className="w-full border border-[#E8D5B7] rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A623]" />
                             </div>
-                            <div>
+                            <div className="md:col-span-2">
                               <label className="block text-[11px] font-semibold text-[#6B5744] mb-1 uppercase tracking-wider">Languages</label>
                               <input value={editForm.language} onChange={e => setEditForm(f => ({ ...f, language: e.target.value }))} className="w-full border border-[#E8D5B7] rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A623]" />
                             </div>
@@ -380,11 +536,41 @@ export default function AdminMentorsPage() {
                             </div>
                             <div className="md:col-span-2 flex justify-end gap-2 mt-2">
                               <button onClick={() => { setEditingId(null); setExpandedId(null); }} className="text-xs text-[#6B5744] hover:text-[#2C1A0E] px-4 py-1.5 rounded-lg border border-[#E8D5B7] bg-white transition-colors">Cancel</button>
-                              <button onClick={() => handleSaveEdit(m.id)} disabled={saving || editUploadingPhoto || !editForm.name.trim() || !editForm.core_skill.trim() || !editForm.country.trim() || !editForm.language.trim()} className="bg-[#F5A623] text-[#2C1A0E] text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-[#E09615] disabled:opacity-50 transition-colors">{saving ? 'Saving...' : 'Save Changes'}</button>
+                              <button
+                                onClick={() => handleSaveEdit(m.id)}
+                                disabled={
+                                  saving ||
+                                  editUploadingPhoto ||
+                                  !editForm.name.trim() ||
+                                  editForm.pin.trim().length < 4 ||
+                                  Boolean(editPinDuplicate) ||
+                                  !editForm.core_skill.trim() ||
+                                  !editForm.country.trim() ||
+                                  !editForm.language.trim()
+                                }
+                                className="bg-[#F5A623] text-[#2C1A0E] text-xs font-bold px-4 py-1.5 rounded-lg hover:bg-[#E09615] disabled:opacity-50 transition-colors"
+                              >
+                                {saving ? 'Saving...' : 'Save Changes'}
+                              </button>
                             </div>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 pl-11">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3 pl-11">
+                            <div>
+                              <p className="text-[11px] font-semibold text-[#6B5744] uppercase tracking-wider mb-0.5">Login PIN</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-mono font-bold text-[#2C1A0E] tracking-wider">{m.pin || '-'}</p>
+                                {m.pin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => copyPin(m.id, m.pin)}
+                                    className="text-xs text-[#F5A623] hover:text-[#E09615] font-semibold underline"
+                                  >
+                                    {isCopied ? 'Copied!' : 'Copy PIN'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                             <div>
                               <p className="text-[11px] font-semibold text-[#6B5744] uppercase tracking-wider mb-0.5">Country of Origin</p>
                               <p className="text-sm text-[#2C1A0E]">{m.country || '-'}</p>
@@ -394,7 +580,7 @@ export default function AdminMentorsPage() {
                               <p className="text-sm text-[#2C1A0E]">{m.language || '-'}</p>
                             </div>
                             {m.photo_path && (
-                              <div className="md:col-span-2">
+                              <div className="md:col-span-3">
                                 <p className="text-[11px] font-semibold text-[#6B5744] uppercase tracking-wider mb-1">Photo</p>
                                 <img src={m.photo_path} alt={m.name} className="h-20 w-20 object-cover rounded-xl border border-[#E8D5B7]" />
                               </div>

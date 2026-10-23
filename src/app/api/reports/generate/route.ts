@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import { getAvailablePeriods } from '@/lib/period'
 
@@ -22,17 +23,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid period_key' }, { status: 400 })
   }
 
-  // Return existing report if one already exists for this student+period
+  // Return existing report if one already exists for this student+period (with ±3 day tolerance for timezone offsets)
+  const windowStart = new Date(period.start.getTime() - 3 * 24 * 60 * 60 * 1000)
+  const windowEnd = new Date(period.start.getTime() + 3 * 24 * 60 * 60 * 1000)
+
   const existing = await prisma.report.findFirst({
-    where: { student_id, period_start: period.start },
+    where: {
+      student_id,
+      period_start: { gte: windowStart, lte: windowEnd },
+    },
   })
   if (existing) {
     return NextResponse.json(existing)
   }
 
+  const cookieMentorId = cookies().get('mentor_session')?.value
+  const mentorId = cookieMentorId && cookieMentorId !== 'true' ? cookieMentorId : null
+
   const report = await prisma.report.create({
     data: {
       student_id,
+      mentor_id: mentorId,
       period_start: period.start,
       period_end: period.end,
       status: 'draft',

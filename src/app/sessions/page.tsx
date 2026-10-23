@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import MentorNav from '@/components/MentorNav'
+import LoadingState from '@/components/LoadingState'
 import { getAvailablePeriods, getCurrentPeriod } from '@/lib/period'
 
 interface Session {
@@ -148,17 +149,17 @@ export default function SessionsPage() {
         </div>
 
         {showSuccess && (
-          <div className="mb-6 p-4 bg-green-50/50 backdrop-blur-sm border border-green-200/50 rounded-2xl text-sm font-medium text-green-700 shadow-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">✓</div>
-            Recap session saved successfully!
+          <div className="sticky top-16 z-30 mb-6 p-4 bg-green-50/95 backdrop-blur-sm border border-green-200 rounded-2xl text-sm font-medium text-green-700 shadow-sm flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">✓</div>
+              <span>Recap session saved successfully!</span>
+            </div>
+            <button onClick={() => setShowSuccess(false)} className="text-green-500 hover:text-green-800 font-bold px-1.5" aria-label="Close">✕</button>
           </div>
         )}
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
-            <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
-            <p className="text-sm font-medium">Loading sessions...</p>
-          </div>
+          <LoadingState className="py-20" />
         ) : sessions.length === 0 ? (
           <div className="text-center py-20 px-6 bg-white border border-[#E8D5B7]/40 rounded-3xl shadow-sm">
             <div className="w-16 h-16 mx-auto bg-[#FAFAF8] rounded-2xl flex items-center justify-center mb-4">

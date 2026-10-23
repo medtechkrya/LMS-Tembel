@@ -9,8 +9,8 @@ export interface Period {
  * Returns the standard format for a period, e.g., "Aug 26 - Sep 25, 2026"
  */
 export function formatPeriod(start: Date, end: Date): string {
-  const s = start.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-  const e = end.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+  const s = start.toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const e = end.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   return `${s} – ${e}`
 }
 
@@ -18,9 +18,9 @@ export function formatPeriod(start: Date, end: Date): string {
  * Returns the period key for a given date.
  */
 export function getPeriodKeyFromDate(d: Date): string {
-  let year = d.getFullYear()
-  let month = d.getMonth() + 1
-  if (d.getDate() >= 26) {
+  let year = d.getUTCFullYear()
+  let month = d.getUTCMonth() + 1
+  if (d.getUTCDate() >= 26) {
     month += 1
     if (month > 12) { month = 1; year++ }
   }
@@ -28,8 +28,18 @@ export function getPeriodKeyFromDate(d: Date): string {
 }
 
 /**
+ * Checks whether two period_start dates belong to the same monthly period
+ * (tolerant of local vs UTC timezone offsets).
+ */
+export function isSamePeriodStart(a: Date | string, b: Date | string): boolean {
+  const t1 = new Date(a).getTime()
+  const t2 = new Date(b).getTime()
+  return Math.abs(t1 - t2) <= 3 * 24 * 60 * 60 * 1000
+}
+
+/**
  * Returns a list of available periods. 
- * By default, goes back a certain number of months.
+ * Uses UTC timestamps so localhost and Vercel always produce the exact same dates.
  */
 export function getAvailablePeriods(monthsBack = 6): Period[] {
   const periods: Period[] = []
@@ -49,12 +59,12 @@ export function getAvailablePeriods(monthsBack = 6): Period[] {
 
   // Go back month by month
   for (let i = 0; i <= monthsBack; i++) {
-    const start = new Date(currentStartYear, currentStartMonth - i, 26)
+    const start = new Date(Date.UTC(currentStartYear, currentStartMonth - i, 26, 0, 0, 0, 0))
     
     // The end date is always the 25th of the next month relative to start
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 25, 23, 59, 59, 999)
+    const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 25, 23, 59, 59, 999))
     
-    const key = `${end.getFullYear()}-${(end.getMonth() + 1).toString().padStart(2, '0')}`
+    const key = `${end.getUTCFullYear()}-${(end.getUTCMonth() + 1).toString().padStart(2, '0')}`
     
     periods.push({
       key,

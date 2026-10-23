@@ -1,17 +1,31 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+
+interface LoggedInMentor {
+  id: string
+  name: string
+  photo_path?: string | null
+}
 
 export default function DashboardPage() {
-  const router = useRouter()
+  const [mentor, setMentor] = useState<LoggedInMentor | null>(null)
+
+  useEffect(() => {
+    fetch('/api/mentor-me')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data?.id) setMentor(data)
+      })
+      .catch(() => {})
+  }, [])
 
   const handleLogout = async () => {
     try {
       await fetch('/api/mentor-logout', { method: 'POST' })
-      router.push('/mentor-login')
-      router.refresh()
+      window.location.href = '/mentor-login'
     } catch (e) {
       console.error(e)
     }
@@ -19,14 +33,28 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAF8] flex flex-col items-center justify-center px-6 relative overflow-hidden">
-      {/* Logout Button */}
-      <button 
-        onClick={handleLogout}
-        className="absolute top-6 right-6 sm:top-8 sm:right-8 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[#6B5744] bg-white border border-[#E8D5B7]/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:text-[#2C1A0E] transition-all z-20"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-        <span className="hidden sm:inline">Log Out</span>
-      </button>
+      {/* Top Right Mentor Info & Logout Button */}
+      <div className="absolute top-6 right-6 sm:top-8 sm:right-8 flex items-center gap-2.5 z-20">
+        {mentor && (
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-[#E8D5B7]/60 shadow-sm text-sm font-semibold text-[#2C1A0E]">
+            {mentor.photo_path ? (
+              <img src={mentor.photo_path} alt={mentor.name} className="w-5 h-5 rounded-full object-cover border border-[#E8D5B7]" />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-[#F5A623]/20 text-[#2C1A0E] text-xs font-bold flex items-center justify-center">
+                {mentor.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span>{mentor.name}</span>
+          </div>
+        )}
+        <button 
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-[#6B5744] bg-white border border-[#E8D5B7]/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:text-[#2C1A0E] transition-all"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+          <span className="hidden sm:inline">Log Out</span>
+        </button>
+      </div>
 
       {/* Subtle background decoration */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-tr from-[#F5A623]/10 to-transparent rounded-full blur-3xl -z-10" />

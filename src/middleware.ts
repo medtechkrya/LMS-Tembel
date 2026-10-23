@@ -17,7 +17,8 @@ export function middleware(request: NextRequest) {
   // Mentor routing
   if (pathname.startsWith('/sessions') || pathname.startsWith('/reports') || pathname.startsWith('/mentors')) {
     const mentorCookie = request.cookies.get('mentor_session')
-    if (!mentorCookie || mentorCookie.value !== 'true') {
+    // Require a valid mentor ID in mentor_session cookie (reject legacy 'true' value)
+    if (!mentorCookie || !mentorCookie.value || mentorCookie.value === 'true') {
       return NextResponse.redirect(new URL('/mentor-login', request.url))
     }
     return NextResponse.next()

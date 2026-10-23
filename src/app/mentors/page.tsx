@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useConfirm } from '@/components/ConfirmModal'
+import LoadingState from '@/components/LoadingState'
 
 interface Mentor {
   id: string
@@ -9,6 +11,7 @@ interface Mentor {
 }
 
 export default function MentorsPage() {
+  const { confirm, ConfirmDialog } = useConfirm()
   const [mentors, setMentors] = useState<Mentor[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
@@ -50,7 +53,13 @@ export default function MentorsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus mentor ini?')) return
+    const ok = await confirm({
+      title: 'Hapus Mentor',
+      message: 'Arsipkan mentor ini?',
+      confirmText: 'Hapus',
+      variant: 'danger',
+    })
+    if (!ok) return
     try {
       await fetch('/api/mentors', {
         method: 'DELETE',
@@ -65,6 +74,7 @@ export default function MentorsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
+      <ConfirmDialog />
       <div className="max-w-md mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/" className="text-gray-400 hover:text-gray-600 text-lg">←</Link>
@@ -102,7 +112,7 @@ export default function MentorsPage() {
 
         {/* List */}
         {loading ? (
-          <p className="text-sm text-gray-400 text-center py-8">Memuat...</p>
+          <LoadingState className="py-12" />
         ) : mentors.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">Belum ada mentor.</p>
         ) : (

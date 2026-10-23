@@ -53,7 +53,10 @@ export async function POST(
     const randomAppreciation = appreciations[Math.floor(Math.random() * appreciations.length)]
 
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Teman Belajar" <noreply@temanbelajar.id>',
+      from: {
+        name: 'Teman Belajar',
+        address: process.env.SMTP_USER || 'temanbelajar@krya.global'
+      },
       to: report.student.parent_email,
       subject: `Teman Belajar Krya Monthly Report - ${report.student.name} - ${periodStr}`,
       text: `Dear ${report.student.name} Parent,\n\nPlease find attached the monthly report for ${report.student.name} for the period of ${periodStr}.\n\n${randomAppreciation}\n\nIf you have any questions, feel free to contact us.\n\nBest regards,\nTeman Belajar Team`,

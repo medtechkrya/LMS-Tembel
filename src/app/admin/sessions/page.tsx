@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import AdminNav from '../_nav'
+import LoadingState from '@/components/LoadingState'
 
 interface Session {
   id: string
@@ -34,6 +35,7 @@ const ATTENDANCE_BADGE: Record<string, string> = {
 }
 
 import { getAvailablePeriods, getCurrentPeriod, getPeriodKeyFromDate } from '@/lib/period'
+import { useConfirm } from '@/components/ConfirmModal'
 
 function formatPeriodLabel(key: string): string {
   const period = getAvailablePeriods(12).find(p => p.key === key)
@@ -48,6 +50,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function AdminSessionsPage() {
+  const { confirm, ConfirmDialog } = useConfirm()
   const [students, setStudents] = useState<Student[]>([])
   const [loadingStudents, setLoadingStudents] = useState(true)
 
@@ -139,7 +142,13 @@ export default function AdminSessionsPage() {
 
   const handleDeletePhotos = async () => {
     const periodLabel = formatPeriodLabel(selectedPeriod)
-    if (!confirm(`Delete all photos for ${selectedStudent?.name} in ${periodLabel}? Make sure you have downloaded them first. This cannot be undone.`)) return
+    const ok = await confirm({
+      title: 'Delete Period Photos',
+      message: `Delete all photos for ${selectedStudent?.name} in ${periodLabel}? Make sure you have downloaded them first. This cannot be undone.`,
+      confirmText: 'Delete Photos',
+      variant: 'danger',
+    })
+    if (!ok) return
     setDeletingPhotos(true)
     setError('')
     try {
@@ -159,7 +168,13 @@ export default function AdminSessionsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this session?')) return
+    const ok = await confirm({
+      title: 'Delete Session',
+      message: 'Delete this session? This cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
     try {
       const res = await fetch(`/api/admin/sessions/${id}`, { method: 'DELETE' })
       if (!res.ok) { setError('Failed to delete session'); return }
@@ -178,6 +193,7 @@ export default function AdminSessionsPage() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
+      <ConfirmDialog />
       <main className="flex-1 p-5 md:p-8 max-w-6xl">
         <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6 tracking-tight">Session Management</h1>
 
@@ -188,8 +204,8 @@ export default function AdminSessionsPage() {
         )}
 
         {/* Dropdowns */}
-        <div className="flex gap-4 mb-8">
-          <div className="w-72 relative">
+        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+          <div className="w-full sm:w-72 relative">
             <label className="block text-[12px] font-bold tracking-wider uppercase text-[#B0957A] mb-2">Student</label>
             <div className="relative">
               <select
@@ -209,7 +225,7 @@ export default function AdminSessionsPage() {
             </div>
           </div>
 
-          <div className="w-64 relative">
+          <div className="w-full sm:w-64 relative">
             <label className="block text-[12px] font-bold tracking-wider uppercase text-[#B0957A] mb-2">Periode</label>
             <div className="relative">
               <select
@@ -234,14 +250,11 @@ export default function AdminSessionsPage() {
 
         {/* Table area */}
         {loadingSessions ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
-            <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
-            <p className="text-sm font-medium">Loading sessions...</p>
-          </div>
+          <LoadingState className="py-20" />
         ) : selectedStudentId && selectedPeriod ? (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
           {/* Photo actions */}
-          <div className="flex items-center gap-3 mb-4 bg-white px-5 py-3 rounded-2xl shadow-sm border border-[#E8D5B7]/40">
+          <div className="flex flex-wrap items-center gap-3 mb-4 bg-white px-5 py-3 rounded-2xl shadow-sm border border-[#E8D5B7]/40">
             <button
               onClick={handleDownloadPhotos}
               disabled={downloadingPhotos}

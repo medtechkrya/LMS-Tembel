@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import MentorNav from '@/components/MentorNav'
+import LoadingState from '@/components/LoadingState'
 
 interface Student {
   id: string
@@ -11,10 +12,10 @@ interface Student {
   program: string
 }
 
-interface Mentor {
+interface LoggedInMentor {
   id: string
   name: string
-  status: string
+  photo_path?: string | null
 }
 
 export default function NewSessionPage() {
@@ -22,7 +23,7 @@ export default function NewSessionPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [students, setStudents] = useState<Student[]>([])
-  const [mentors, setMentors] = useState<Mentor[]>([])
+  const [currentMentor, setCurrentMentor] = useState<LoggedInMentor | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -45,11 +46,18 @@ export default function NewSessionPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/students').then(r => r.json()),
-      fetch('/api/mentors').then(r => r.json()),
-    ]).then(([s, m]: [Student[], Mentor[]]) => {
-      setStudents(s)
-      setMentors((m as Mentor[]).filter(x => x.status === 'active'))
-    }).finally(() => setLoading(false))
+      fetch('/api/mentor-me').then(r => (r.ok ? r.json() : null)),
+    ])
+      .then(([s, me]: [Student[], LoggedInMentor | null]) => {
+        setStudents(s)
+        if (!me?.id) {
+          window.location.href = '/mentor-login'
+          return
+        }
+        setCurrentMentor(me)
+        setForm(f => ({ ...f, mentor_id: me.id }))
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const handleChange = (
@@ -115,6 +123,7 @@ export default function NewSessionPage() {
               }
               setPhotoPath(data.path)
               setPhotoName(file.name)
+              setFieldErrors(fe => ({ ...fe, photo: '' }))
             } catch {
               setError('Upload failed / Upload gagal')
             } finally {
@@ -142,11 +151,12 @@ export default function NewSessionPage() {
 
     const errors: Record<string, string> = {}
     if (!form.student_id) errors.student_id = 'Select a student first / Pilih siswa terlebih dahulu'
-    if (!form.mentor_id) errors.mentor_id = 'Select a mentor / Pilih mentor'
+    if (!form.mentor_id) errors.mentor_id = 'Mentor session invalid. Please re-login / Sesi mentor tidak valid'
     if (!form.date) errors.date = 'Date is required / Tanggal wajib diisi'
     if (!form.attendance) errors.attendance = 'Select attendance / Pilih kehadiran'
     if (!form.activity.trim()) errors.activity = 'Activity is required / Aktivitas wajib diisi'
     if (!form.observation.trim()) errors.observation = 'Observation is required / Observasi wajib diisi'
+    if (!photoPath) errors.photo = 'Session photo is required / Foto sesi wajib diunggah'
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors)
@@ -180,9 +190,9 @@ export default function NewSessionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAF8] text-[#6B5744]">
-        <div className="w-10 h-10 border-4 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-4 shadow-sm" />
-        <p className="text-[14px] font-bold tracking-wide">Memuat data...</p>
+      <div className="min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
+        <MentorNav />
+        <LoadingState className="py-32" />
       </div>
     )
   }
@@ -204,15 +214,16 @@ export default function NewSessionPage() {
 
         {/* Error */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50/50 backdrop-blur-sm border border-red-200/50 rounded-2xl text-[13px] font-medium text-red-700 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-            {error}
+          <div className="sticky top-16 z-30 mb-6 p-4 bg-red-50/95 backdrop-blur-sm border border-red-200 rounded-2xl text-[13px] font-medium text-red-700 shadow-sm flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError('')} className="text-red-400 hover:text-red-700 font-bold px-1.5" aria-label="Close">✕</button>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 p-6 sm:p-8 space-y-6">
           {/* Student */}
           <div>
-            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Student / Siswa</label>
+            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Student / Siswa *</label>
             <div className="relative">
               <select
                 name="student_id"
@@ -234,32 +245,28 @@ export default function NewSessionPage() {
             {fieldErrors.student_id && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.student_id}</p>}
           </div>
 
-          {/* Mentor */}
+          {/* Mentor (Auto-filled & Locked) */}
           <div>
-            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Mentor</label>
-            <div className="relative">
-              <select
-                name="mentor_id"
-                value={form.mentor_id}
-                onChange={handleChange}
-                className={`appearance-none w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 pr-10 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white transition-all ${fieldErrors.mentor_id ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
-              >
-                <option value="">— Select Mentor / Pilih Mentor —</option>
-                {mentors.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#6B5744]">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-              </div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-[13px] font-semibold text-[#2C1A0E] uppercase tracking-wide">Mentor</label>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#8a7662]">
+                <svg className="w-3.5 h-3.5 text-[#F5A623]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                Auto-filled from your PIN
+              </span>
+            </div>
+            <div className="w-full bg-[#FAFAF8] border border-[#E8D5B7]/60 rounded-xl px-4 py-3.5 text-[15px] font-semibold text-[#2C1A0E] flex items-center justify-between select-none opacity-90">
+              <span>{currentMentor?.name || '—'}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#F5A623]/15 text-[#6B5744]">
+                Locked
+              </span>
             </div>
             {fieldErrors.mentor_id && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.mentor_id}</p>}
           </div>
 
           {/* Date + Attendance */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Date / Tanggal</label>
+              <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Date / Tanggal *</label>
               <input
                 type="date"
                 name="date"
@@ -270,7 +277,7 @@ export default function NewSessionPage() {
               {fieldErrors.date && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.date}</p>}
             </div>
             <div>
-              <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Attendance / Kehadiran</label>
+              <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">Attendance / Kehadiran *</label>
               <div className="relative">
                 <select
                   name="attendance"
@@ -293,7 +300,7 @@ export default function NewSessionPage() {
           {/* Activity */}
           <div>
             <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
-              Activity / Aktivitas{' '}
+              Activity / Aktivitas *{' '}
               <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1 sentence / kalimat)</span>
             </label>
             <textarea
@@ -310,7 +317,7 @@ export default function NewSessionPage() {
           {/* Observation */}
           <div>
             <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
-              Observation / Observasi{' '}
+              Observation / Observasi *{' '}
               <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1 paragraph, 1-6 sentences / kalimat)</span>
             </label>
             <textarea
@@ -324,16 +331,27 @@ export default function NewSessionPage() {
             {fieldErrors.observation && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.observation}</p>}
           </div>
 
-          {/* Photo */}
+          {/* Photo (Mandatory) */}
           <div>
-            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
-              Session Photo / Foto Sesi{' '}
-              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(optional / opsional)</span>
+            <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1 uppercase tracking-wide">
+              Session Photo / Foto Sesi <span className="text-red-500">*</span>
             </label>
+            <p className="text-[12px] text-[#6B5744] mb-2.5">
+              {form.attendance === 'Absent'
+                ? 'Upload your attendance photo as proof / Unggah foto kehadiran Anda sebagai bukti siswa tidak hadir.'
+                : form.attendance === 'Reschedule'
+                ? 'Upload reschedule proof (e.g. chat) / Unggah bukti reschedule (misal screenshot chat).'
+                : 'Upload class photo with student / Unggah foto sesi kelas bersama siswa.'}
+            </p>
+
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full bg-[#FAFAF8] border-2 border-dashed border-[#E8D5B7] rounded-xl p-6 text-center hover:bg-white hover:border-[#F5A623]/60 transition-colors group"
+              className={`w-full bg-[#FAFAF8] border-2 border-dashed rounded-xl p-6 text-center hover:bg-white transition-colors group ${
+                fieldErrors.photo
+                  ? 'border-red-400 hover:border-red-500'
+                  : 'border-[#E8D5B7] hover:border-[#F5A623]/60'
+              }`}
             >
               {uploading ? (
                 <div className="flex items-center justify-center gap-3 text-[15px] font-medium text-[#6B5744]">
@@ -354,7 +372,7 @@ export default function NewSessionPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   </div>
                   <div>
-                    <span className="text-[14px] font-semibold block">Tap to select photo</span>
+                    <span className="text-[14px] font-semibold block">Tap to select photo *</span>
                     <span className="text-[13px] text-[#B0957A]">JPG, PNG, or WEBP</span>
                   </div>
                 </div>
@@ -367,6 +385,7 @@ export default function NewSessionPage() {
               onChange={handlePhotoChange}
               className="hidden"
             />
+            {fieldErrors.photo && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.photo}</p>}
           </div>
 
           {/* Submit */}
@@ -376,7 +395,7 @@ export default function NewSessionPage() {
               disabled={submitting || uploading}
               className="w-full bg-[#F5A623] text-[#2C1A0E] font-bold py-3.5 rounded-xl text-[15px] shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:bg-[#F6AF3C] disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm disabled:cursor-not-allowed transition-all duration-200"
             >
-              {submitting ? 'Saving... / Menyimpan...' : 'Save Session Recap / Simpan Rekap Sesi'}
+              {submitting ? 'Saving...' : 'Save Session Recap / Simpan Rekap Sesi'}
             </button>
           </div>
         </form>

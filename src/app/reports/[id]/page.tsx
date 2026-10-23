@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import MentorNav from '@/components/MentorNav'
+import LoadingState from '@/components/LoadingState'
+import { useConfirm } from '@/components/ConfirmModal'
 interface Session {
   id: string
   date: string
@@ -48,6 +50,7 @@ function formatDate(dateStr: string) {
 
 export default function ReportDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const { confirm, ConfirmDialog } = useConfirm()
   const [report, setReport] = useState<Report | null>(null)
   const [mentors, setMentors] = useState<Mentor[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,6 +58,7 @@ export default function ReportDetailPage() {
   const [saved, setSaved] = useState(false)
   const [markingDone, setMarkingDone] = useState(false)
   const [error, setError] = useState('')
+  const [currentMentorId, setCurrentMentorId] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     mentor_id: '',
@@ -67,11 +71,13 @@ export default function ReportDetailPage() {
     Promise.all([
       fetch(`/api/reports/${id}`).then(r => r.json()),
       fetch('/api/mentors').then(r => r.json()),
-    ]).then(([data, m]: [Report, Mentor[]]) => {
+      fetch('/api/mentor-me').then(r => (r.ok ? r.json() : null)),
+    ]).then(([data, m, me]: [Report, Mentor[], Mentor | null]) => {
       setReport(data)
       setMentors((m as Mentor[]).filter(x => x.status === 'active'))
+      setCurrentMentorId(me?.id ?? null)
       setForm({
-        mentor_id: data.mentor_id ?? '',
+        mentor_id: data.mentor_id || me?.id || '',
         summary_achievements: data.summary_achievements ?? '',
         summary_general: data.summary_general ?? '',
         summary_parents: data.summary_parents ?? '',
@@ -79,7 +85,8 @@ export default function ReportDetailPage() {
     }).finally(() => setLoading(false))
   }, [id])
 
-  const isLocked = report?.status === 'done' || report?.status === 'sent'
+  const isOtherMentorReport = Boolean(report?.mentor_id && currentMentorId && report.mentor_id !== currentMentorId)
+  const isLocked = report?.status === 'done' || report?.status === 'sent' || isOtherMentorReport
 
   const saveReport = async (extraData?: object) => {
     const res = await fetch(`/api/reports/${id}`, {
@@ -102,7 +109,6 @@ export default function ReportDetailPage() {
     try {
       await saveReport()
       setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to save / Gagal menyimpan')
     } finally {
@@ -123,7 +129,12 @@ export default function ReportDetailPage() {
       return
     }
 
-    if (!confirm('Mark this report as Done? Editing will be disabled. / Tandai laporan ini sebagai Selesai? Pengeditan akan dinonaktifkan.')) return
+    const ok = await confirm({
+      title: 'Submit Report / Selesaikan Laporan',
+      message: 'Mark this report as Done? Editing will be disabled. / Tandai laporan ini sebagai Selesai? Pengeditan akan dinonaktifkan.',
+      confirmText: 'Yes, Submit',
+    })
+    if (!ok) return
 
     setMarkingDone(true)
     setError('')
@@ -139,9 +150,9 @@ export default function ReportDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAFAF8] text-[#6B5744]">
-        <div className="w-10 h-10 border-4 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-4 shadow-sm" />
-        <p className="text-[14px] font-bold tracking-wide">Loading report...</p>
+      <div className="min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
+        <MentorNav />
+        <LoadingState className="py-32" />
       </div>
     )
   }
@@ -157,19 +168,20 @@ export default function ReportDetailPage() {
   return (
     <div className="min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <MentorNav />
+      <ConfirmDialog />
       <div className="max-w-3xl mx-auto py-8 px-5">
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/reports" className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-[#E8D5B7]/40 text-[#6B5744] hover:text-[#F5A623] hover:border-[#F5A623]/40 hover:-translate-x-1 transition-all">
+        <div className="flex items-center gap-3 sm:gap-4 mb-8">
+          <Link href="/reports" className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-[#E8D5B7]/40 text-[#6B5744] hover:text-[#F5A623] hover:border-[#F5A623]/40 hover:-translate-x-1 transition-all shrink-0">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             <img src="/Logo-Teman-Belajar.png" alt="Teman Belajar" className="h-7" />
             <div className="w-px h-4 bg-[#E8D5B7] rounded" />
             <img src="/krya-logo.png" alt="Krya" className="h-6" />
           </div>
-          <div className="ml-2">
+          <div className="sm:ml-2 min-w-0">
             <h1 className="text-xl font-bold text-[#2C1A0E] tracking-tight leading-tight">Monthly Report</h1>
-            <p className="text-[13px] font-medium text-[#6B5744]">
+            <p className="text-[13px] font-medium text-[#6B5744] truncate">
               {report.student.name} <span className="text-[#E8D5B7] mx-1">|</span> {formatPeriod(report.period_start, report.period_end)}
             </p>
           </div>
@@ -186,14 +198,18 @@ export default function ReportDetailPage() {
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-2xl text-[13px] font-medium text-red-700 animate-in fade-in slide-in-from-top-2">
-            {error}
+          <div className="sticky top-16 z-30 mb-6 p-4 bg-red-50/95 backdrop-blur-sm border border-red-200 rounded-2xl text-[13px] font-medium text-red-700 flex items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2">
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="text-red-400 hover:text-red-700 font-bold px-1.5" aria-label="Close">✕</button>
           </div>
         )}
         {saved && (
-          <div className="mb-6 p-4 bg-green-50/80 backdrop-blur-sm border border-green-200/50 rounded-2xl text-[13px] font-bold text-green-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-            Saved! / Tersimpan!
+          <div className="sticky top-16 z-30 mb-6 p-4 bg-green-50/95 backdrop-blur-sm border border-green-200 rounded-2xl text-[13px] font-bold text-green-700 flex items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              <span>Saved! / Tersimpan!</span>
+            </div>
+            <button onClick={() => setSaved(false)} className="text-green-500 hover:text-green-800 font-bold px-1.5" aria-label="Close">✕</button>
           </div>
         )}
 
@@ -202,24 +218,20 @@ export default function ReportDetailPage() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#F5A623]/5 rounded-bl-full -z-10" />
             <div className="space-y-4">
               <div>
-                <label className="block text-[13px] font-bold tracking-wider uppercase text-[#B0957A] mb-2">
-                  Mentor <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={form.mentor_id}
-                    onChange={e => setForm(f => ({ ...f, mentor_id: e.target.value }))}
-                    disabled={isLocked}
-                    className="appearance-none w-full bg-[#FAFAF8] border border-[#E8D5B7]/60 rounded-xl px-4 py-3 pr-10 text-[14px] font-medium text-[#2C1A0E] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:border-[#F5A623] focus:bg-white transition-all disabled:bg-gray-50/50 disabled:text-[#6B5744] disabled:opacity-70"
-                  >
-                    <option value="">— Select Mentor / Pilih Mentor —</option>
-                    {mentors.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#6B5744]">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[13px] font-bold tracking-wider uppercase text-[#B0957A]">
+                    Mentor <span className="text-red-500">*</span>
+                  </label>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#8a7662]">
+                    <svg className="w-3.5 h-3.5 text-[#F5A623]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    Auto-filled from your PIN
+                  </span>
+                </div>
+                <div className="w-full bg-[#FAFAF8] border border-[#E8D5B7]/60 rounded-xl px-4 py-3 text-[14px] font-semibold text-[#2C1A0E] flex items-center justify-between select-none opacity-90">
+                  <span>{mentors.find(m => m.id === form.mentor_id)?.name || report.mentor?.name || '—'}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#F5A623]/15 text-[#6B5744]">
+                    Locked
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm pt-2">
@@ -267,7 +279,7 @@ export default function ReportDetailPage() {
               </div>
             ) : (
               <div className="overflow-x-auto -mx-2 px-2">
-                <table className="w-full text-left min-w-[500px]">
+                <table className="w-full text-left min-w-[500px] table-fixed break-words">
                   <thead>
                     <tr className="border-b border-[#E8D5B7]/40">
                       <th className="py-3 px-2 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase w-[20%]">Session (Date)</th>

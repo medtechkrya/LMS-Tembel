@@ -12,6 +12,7 @@ model Student {
   name         String
   parent_email String
   program      String
+  status       String    @default("active")
   sessions     Session[]
   reports      Report[]
 
@@ -21,6 +22,7 @@ model Student {
 model Mentor {
   id         String    @id @default(cuid())
   name       String
+  pin        String?   @unique
   status     String    @default("active")
   core_skill String?
   photo_path String?   @db.Text

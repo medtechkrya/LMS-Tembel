@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import AdminNav from './_nav'
-import { getCurrentPeriod } from '@/lib/period'
+import LoadingState from '@/components/LoadingState'
+import { getCurrentPeriod, isSamePeriodStart } from '@/lib/period'
 
 interface Student {
   id: string
@@ -49,21 +50,14 @@ export default function AdminDashboard() {
   const currentPeriod = getCurrentPeriod()
 
   function getReport(studentId: string): Report | null {
-    return reports.find(r => {
-      const rs = new Date(r.period_start)
-      return r.student_id === studentId &&
-        rs.getFullYear() === currentPeriod.start.getFullYear() &&
-        rs.getMonth() === currentPeriod.start.getMonth() &&
-        rs.getDate() === currentPeriod.start.getDate()
-    }) ?? null
+    return reports.find(r =>
+      r.student_id === studentId && isSamePeriodStart(r.period_start, currentPeriod.start)
+    ) ?? null
   }
 
-  const periodReports = reports.filter(r => {
-    const rs = new Date(r.period_start)
-    return rs.getFullYear() === currentPeriod.start.getFullYear() &&
-      rs.getMonth() === currentPeriod.start.getMonth() &&
-      rs.getDate() === currentPeriod.start.getDate()
-  })
+  const periodReports = reports.filter(r =>
+    isSamePeriodStart(r.period_start, currentPeriod.start)
+  )
 
   const filteredStudents = students.filter(student => {
     if (searchQuery && !student.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
@@ -150,10 +144,7 @@ export default function AdminDashboard() {
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-[#6B5744]">
-              <div className="w-6 h-6 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
-              <p className="text-sm font-medium">Loading status...</p>
-            </div>
+            <LoadingState className="py-16" />
           ) : filteredStudents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-4">
               <div className="w-16 h-16 bg-[#F5A623]/10 text-[#F5A623] rounded-full flex items-center justify-center mb-4">

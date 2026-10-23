@@ -24,3 +24,35 @@ body {
     text-wrap: balance;
   }
 }
+
+@keyframes loading-breathe {
+  0%, 100% {
+    opacity: 0.92;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes loading-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(60%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.animate-loading-breathe {
+  animation: loading-breathe 2s ease-in-out infinite;
+}
+
+.animate-loading-slide {
+  animation: loading-slide 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+

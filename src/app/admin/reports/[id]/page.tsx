@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminNav from '../../_nav'
+import { useConfirm } from '@/components/ConfirmModal'
+import LoadingState from '@/components/LoadingState'
 
 interface Session {
   id: string
@@ -52,6 +54,7 @@ function formatDate(dateStr: string) {
 export default function AdminReportDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { confirm, ConfirmDialog } = useConfirm()
   const [report, setReport] = useState<Report | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -61,6 +64,7 @@ export default function AdminReportDetailPage() {
   
   // Email sending states
   const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
   const [previewUrl, setPreviewUrl] = useState('')
   const [error, setError] = useState('')
 
@@ -99,7 +103,6 @@ export default function AdminReportDetailPage() {
         return
       }
       setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
     } catch {
       setError('Failed to save')
     } finally {
@@ -108,7 +111,13 @@ export default function AdminReportDetailPage() {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Delete this report? This cannot be undone.')) return
+    const ok = await confirm({
+      title: 'Delete Report',
+      message: 'Delete this report? This cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
     setDeleting(true)
     setError('')
     try {
@@ -126,7 +135,12 @@ export default function AdminReportDetailPage() {
   }
 
   const handleMarkSent = async () => {
-    if (!confirm('Mark this report as Sent?')) return
+    const ok = await confirm({
+      title: 'Mark Report as Sent',
+      message: 'Mark this report as Sent?',
+      confirmText: 'Mark as Sent',
+    })
+    if (!ok) return
     setMarkingSent(true)
     setError('')
     try {
@@ -148,8 +162,14 @@ export default function AdminReportDetailPage() {
   }
 
   const handleSendToParent = async () => {
-    if (!confirm('Are you sure you want to send this report to the parent?')) return
+    const ok = await confirm({
+      title: 'Send Report to Parent',
+      message: 'Are you sure you want to send this report to the parent?',
+      confirmText: 'Send Email',
+    })
+    if (!ok) return
     setSendingEmail(true)
+    setEmailSent(false)
     setError('')
     setPreviewUrl('')
     try {
@@ -165,7 +185,7 @@ export default function AdminReportDetailPage() {
       if (data.previewUrl) {
         setPreviewUrl(data.previewUrl)
       } else {
-        alert('Email sent successfully!')
+        setEmailSent(true)
       }
     } catch {
       setError('Failed to send email')
@@ -178,9 +198,8 @@ export default function AdminReportDetailPage() {
     return (
       <div className="flex min-h-screen bg-[#FAFAF8]">
         <AdminNav />
-        <main className="flex-1 flex flex-col items-center justify-center text-[#6B5744]">
-          <div className="w-10 h-10 border-4 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-4 shadow-sm" />
-          <p className="text-[14px] font-bold tracking-wide">Loading report...</p>
+        <main className="flex-1 flex flex-col items-center justify-center">
+          <LoadingState className="py-20" />
         </main>
       </div>
     )
@@ -200,6 +219,7 @@ export default function AdminReportDetailPage() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
+      <ConfirmDialog />
       <main className="flex-1 p-5 md:p-8 overflow-x-hidden">
         <div className="max-w-3xl mx-auto">
           {/* Top bar */}
@@ -231,14 +251,27 @@ export default function AdminReportDetailPage() {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-2xl text-[13px] font-medium text-red-700 animate-in fade-in slide-in-from-top-2">
-              {error}
+            <div className="sticky top-4 z-30 mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl text-[13px] font-medium text-red-700 shadow-md flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+              <span>{error}</span>
+              <button type="button" onClick={() => setError('')} className="text-xs opacity-60 hover:opacity-100">✕</button>
             </div>
           )}
           {saved && (
-            <div className="mb-6 p-4 bg-green-50/80 backdrop-blur-sm border border-green-200/50 rounded-2xl text-[13px] font-bold text-green-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              Changes saved.
+            <div className="sticky top-4 z-30 mb-6 p-4 bg-green-50 border border-green-200 rounded-2xl text-[13px] font-bold text-green-700 shadow-md flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                <span>Changes saved.</span>
+              </div>
+              <button type="button" onClick={() => setSaved(false)} className="text-xs opacity-60 hover:opacity-100">✕</button>
+            </div>
+          )}
+          {emailSent && (
+            <div className="sticky top-4 z-30 mb-6 p-4 bg-green-50 border border-green-200 rounded-2xl text-[13px] font-bold text-green-700 shadow-md flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                <span>Email sent successfully!</span>
+              </div>
+              <button type="button" onClick={() => setEmailSent(false)} className="text-xs opacity-60 hover:opacity-100">✕</button>
             </div>
           )}
           {previewUrl && (
@@ -301,7 +334,7 @@ export default function AdminReportDetailPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto -mx-2 px-2">
-                  <table className="w-full text-left min-w-[500px]">
+                  <table className="w-full text-left min-w-[500px] table-fixed break-words">
                     <thead>
                       <tr className="border-b border-[#E8D5B7]/40">
                         <th className="py-3 px-2 text-[11px] font-bold tracking-wider text-[#B0957A] uppercase w-[20%]">Session</th>

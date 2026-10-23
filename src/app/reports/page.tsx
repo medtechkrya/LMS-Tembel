@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import MentorNav from '@/components/MentorNav'
-import { getAvailablePeriods, getCurrentPeriod, formatPeriod } from '@/lib/period'
+import LoadingState from '@/components/LoadingState'
+import { getAvailablePeriods, getCurrentPeriod, formatPeriod, isSamePeriodStart } from '@/lib/period'
 
 interface Student {
   id: string
@@ -12,13 +13,27 @@ interface Student {
   program: string
 }
 
+interface SessionItem {
+  id: string
+  student_id: string
+  mentor_id: string | null
+  date: string
+}
+
 interface Report {
   id: string
+  student_id: string
+  mentor_id: string | null
   period_start: string
   period_end: string
   status: string
   student: { name: string }
   mentor: { name: string } | null
+}
+
+interface LoggedInMentor {
+  id: string
+  name: string
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -38,7 +53,9 @@ const STATUS_LABEL: Record<string, string> = {
 export default function ReportsPage() {
   const router = useRouter()
   const [students, setStudents] = useState<Student[]>([])
+  const [allSessions, setAllSessions] = useState<SessionItem[]>([])
   const [allReports, setAllReports] = useState<Report[]>([])
+  const [currentMentor, setCurrentMentor] = useState<LoggedInMentor | null>(null)
   const [selectedStudent, setSelectedStudent] = useState('')
   const [generating, setGenerating] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -51,23 +68,50 @@ export default function ReportsPage() {
     Promise.all([
       fetch('/api/students').then(r => r.json()),
       fetch('/api/reports').then(r => r.json()),
-    ]).then(([s, r]: [Student[], Report[]]) => {
+      fetch('/api/sessions').then(r => r.json()),
+      fetch('/api/mentor-me').then(r => (r.ok ? r.json() : null)),
+    ]).then(([s, r, sess, me]: [Student[], Report[], SessionItem[], LoggedInMentor | null]) => {
+      if (!me?.id) {
+        window.location.href = '/mentor-login'
+        return
+      }
       setStudents(s)
       setAllReports(r as Report[])
+      setAllSessions(sess as SessionItem[])
+      setCurrentMentor(me)
     }).finally(() => setLoading(false))
   }, [])
   
   const selectedPeriod = periods.find(p => p.key === selectedPeriodKey) || periods[0]
-  
-  const reports = allReports.filter(report => {
-    const rs = new Date(report.period_start)
-    return rs.getFullYear() === selectedPeriod.start.getFullYear() &&
-      rs.getMonth() === selectedPeriod.start.getMonth() &&
-      rs.getDate() === selectedPeriod.start.getDate()
-  })
+
+  const reports = allReports.filter(report =>
+    isSamePeriodStart(report.period_start, selectedPeriod.start)
+  )
+
+  const alreadyGeneratedStudentIds = new Set(reports.map(r => r.student_id))
+
+  // Find students that have at least 1 session recap by the logged-in mentor in the selected period
+  const myStudentIdsInPeriod = new Set(
+    allSessions
+      .filter(s => {
+        const d = new Date(s.date)
+        return (
+          s.mentor_id === currentMentor?.id &&
+          d >= selectedPeriod.start &&
+          d <= selectedPeriod.end
+        )
+      })
+      .map(s => s.student_id)
+  )
+
+  // Only show students recapped by this mentor who don't already have a report generated in this period
+  const myStudentsToGenerate = students.filter(
+    s => myStudentIdsInPeriod.has(s.id) && !alreadyGeneratedStudentIds.has(s.id)
+  )
+  const myRecappedCount = students.filter(s => myStudentIdsInPeriod.has(s.id)).length
 
   const handleGenerate = async () => {
-    if (!selectedStudent) { setError('Pilih siswa terlebih dahulu'); return }
+    if (!selectedStudent) { setError('Select a student first / Pilih siswa terlebih dahulu'); return }
     setGenerating(true)
     setError('')
     try {
@@ -76,38 +120,27 @@ export default function ReportsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           student_id: selectedStudent,
-          period_key: selectedPeriod.key // send the selected period
+          period_key: selectedPeriod.key
         }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Gagal membuat laporan')
+        setError(data.error || 'Failed to generate report / Gagal membuat laporan')
         return
       }
       router.push(`/reports/${data.id}`)
     } catch {
-      setError('Gagal membuat laporan')
+      setError('Failed to generate report / Gagal membuat laporan')
     } finally {
       setGenerating(false)
     }
   }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
-        {/* Nav */}
-        <nav className="bg-white/80 backdrop-blur-md border-b border-[#E8D5B7]/50 sticky top-0 z-20">
-          <div className="max-w-xl mx-auto px-5 flex items-center gap-6 h-14">
-            <div className="flex items-center gap-2.5 mr-auto">
-              <img src="/Logo-Teman-Belajar.png" alt="Teman Belajar" className="h-7" />
-              <div className="w-px h-4 bg-[#E8D5B7] rounded" />
-              <img src="/krya-logo.png" alt="Krya" className="h-6" />
-            </div>
-          </div>
-        </nav>
-        <div className="flex flex-col items-center justify-center py-32 text-[#6B5744]">
-          <div className="w-10 h-10 border-4 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-4 shadow-sm" />
-          <p className="text-[14px] font-bold tracking-wide">Loading reports...</p>
-        </div>
+        <MentorNav />
+        <LoadingState className="py-32" />
       </div>
     )
   }
@@ -145,16 +178,23 @@ export default function ReportsPage() {
         <div className="bg-white rounded-3xl shadow-sm border border-[#E8D5B7]/40 p-6 mb-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#F5A623]/5 rounded-bl-full -z-10" />
           <h2 className="text-[15px] font-semibold text-[#2C1A0E] mb-1">Generate Report</h2>
-          <p className="text-[13px] text-[#6B5744] mb-4">Select a student to compile their {selectedPeriod.label} recap into a PDF report.</p>
+          <p className="text-[13px] text-[#6B5744] mb-4">Select a student you recapped in {selectedPeriod.label} to compile their PDF report.</p>
           
           {error && (
-            <div className="mb-4 p-3 bg-red-50/50 backdrop-blur-sm border border-red-200/50 rounded-xl text-[13px] font-medium text-red-700 animate-in fade-in slide-in-from-top-2">
-              {error}
+            <div className="mb-4 p-3 bg-red-50/90 backdrop-blur-sm border border-red-200 rounded-xl text-[13px] font-medium text-red-700 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+              <span>{error}</span>
+              <button type="button" onClick={() => setError('')} className="text-red-400 hover:text-red-700 font-bold px-1" aria-label="Close">✕</button>
             </div>
           )}
           
-          {students.length === 0 ? (
-            <p className="text-[13px] text-[#B0957A]">No registered student.</p>
+          {myRecappedCount === 0 ? (
+            <p className="text-[13px] text-[#B0957A]">
+              No students recapped by you in this period / Belum ada siswa yang Anda rekap di periode ini.
+            </p>
+          ) : myStudentsToGenerate.length === 0 ? (
+            <p className="text-[13px] text-green-700 font-medium">
+              All your students in this period already have reports generated / Semua siswa Anda di periode ini sudah dibuatkan laporan.
+            </p>
           ) : (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <div className="relative flex-1">
@@ -164,7 +204,7 @@ export default function ReportsPage() {
                   className="w-full appearance-none bg-[#FAFAF8] border border-[#E8D5B7]/60 rounded-xl pl-4 pr-10 py-3 text-[14px] font-medium text-[#2C1A0E] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:border-[#F5A623] focus:bg-white transition-all cursor-pointer"
                 >
                   <option value="" disabled>Select Student / Pilih Siswa</option>
-                  {students.map(s => (
+                  {myStudentsToGenerate.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>

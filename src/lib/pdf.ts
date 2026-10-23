@@ -73,7 +73,7 @@ export function buildReportHtml(report: PdfReportData): string {
       const photoHtml = photoSrc
         ? `<br/><img src="${photoSrc}" alt="Session photo" style="max-width:80px;max-height:60px;margin-top:4px;display:block;" />`
         : ''
-      return `<tr style="page-break-inside:avoid;"><td style="width:20%;border:1px solid #000;padding:6px;vertical-align:top;">Session ${i + 1}<br/><small>${formatSessionDate(s.date)}</small>${photoHtml}</td><td style="width:30%;border:1px solid #000;padding:6px;vertical-align:top;word-wrap:break-word;">${s.activity}</td><td style="width:50%;border:1px solid #000;padding:6px;vertical-align:top;word-wrap:break-word;">${s.observation}</td></tr>`
+      return `<tr style="page-break-inside:avoid;"><td style="width:20%;border:1px solid #000;padding:6px;vertical-align:top;">Session ${i + 1}<br/><small>${formatSessionDate(s.date)}</small>${photoHtml}</td><td style="width:30%;border:1px solid #000;padding:6px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;">${s.activity}</td><td style="width:50%;border:1px solid #000;padding:6px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;">${s.observation}</td></tr>`
     })
     .join('')
 
@@ -125,6 +125,9 @@ export function buildReportHtml(report: PdfReportData): string {
     padding: 8pt 10pt;
     min-height: 60pt;
     white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
     font-size: 12pt;
     line-height: 1.6;
   }
@@ -154,10 +157,10 @@ export function buildReportHtml(report: PdfReportData): string {
     ? `<div class="section-body">${report.summary_achievements}</div>`
     : `<div class="section-body empty">Not yet filled in.</div>`}
 </div>
-<div class="section">
-  <div class="section-title">2. Journal of Activities</div>
+<div class="section" style="margin-bottom:0;border-bottom:none;">
+  <div class="section-title" style="border-bottom:none;">2. Journal of Activities</div>
 </div>
-<table style="width:100%;border-collapse:collapse;border:1px solid #000;margin-top:-1px;margin-bottom:12pt;">
+<table style="width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #000;margin-top:0;margin-bottom:12pt;">
   <thead>
     <tr>
       <th style="width:20%;border:1px solid #000;padding:6px;text-align:left;background:#f0f0f0;">Session</th>

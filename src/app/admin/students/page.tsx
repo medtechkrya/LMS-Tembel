@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import AdminNav from '../_nav'
+import { useConfirm } from '@/components/ConfirmModal'
+import LoadingState from '@/components/LoadingState'
 
 interface Student {
   id: string
@@ -11,6 +13,7 @@ interface Student {
 }
 
 export default function AdminStudentsPage() {
+  const { confirm, ConfirmDialog } = useConfirm()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ name: '', program: '', parent_email: '' })
@@ -75,7 +78,13 @@ export default function AdminStudentsPage() {
   }
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
+    const ok = await confirm({
+      title: 'Delete Student',
+      message: `Archive "${name}"? Their past sessions and reports will be preserved.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    })
+    if (!ok) return
     try {
       await fetch('/api/students', {
         method: 'DELETE',
@@ -91,6 +100,7 @@ export default function AdminStudentsPage() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
+      <ConfirmDialog />
       <main className="flex-1 p-5 md:p-8 max-w-5xl">
         <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6">Manage Students</h1>
 
@@ -145,10 +155,7 @@ export default function AdminStudentsPage() {
             <h2 className="text-sm font-semibold text-[#2C1A0E]">{students.length} students</h2>
           </div>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
-              <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
-              <p className="text-sm font-medium">Memuat data siswa...</p>
-            </div>
+            <LoadingState className="py-20" />
           ) : students.length === 0 ? (
             <p className="text-sm text-[#6B5744] p-5">No students yet.</p>
           ) : (

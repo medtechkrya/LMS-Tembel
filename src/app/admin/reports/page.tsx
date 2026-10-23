@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import AdminNav from '../_nav'
+import { useConfirm } from '@/components/ConfirmModal'
+import LoadingState from '@/components/LoadingState'
 
 interface Report {
   id: string
@@ -23,7 +25,7 @@ function groupByMonth(reports: Report[]): Array<{ key: string; label: string; pe
   const map = new Map<string, Report[]>()
   for (const r of reports) {
     const d = new Date(r.period_end)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(r)
   }
@@ -31,21 +33,34 @@ function groupByMonth(reports: Report[]): Array<{ key: string; label: string; pe
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([key, reps]) => {
       const d = new Date(reps[0].period_end)
-      const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
       return { key, label, period: key, reports: reps }
     })
 }
 
 export default function AdminReportsPage() {
+  const { confirm, ConfirmDialog } = useConfirm()
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [exporting, setExporting] = useState<string | null>(null)
   const [sendingId, setSendingId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  const handleSend = async (reportId: string) => {
-    if (!confirm('Send this report to the parent?')) return
+  const showNotice = (type: 'success' | 'error', text: string) => {
+    setNotice({ type, text })
+  }
+
+  const handleSend = async (reportId: string, studentName: string) => {
+    const ok = await confirm({
+      title: 'Send Report to Parent',
+      message: `Send ${studentName}'s monthly report PDF to the parent's email?`,
+      confirmText: 'Send Email',
+    })
+    if (!ok) return
+
     setSendingId(reportId)
+    setNotice(null)
     try {
       const res = await fetch(`/api/admin/reports/${reportId}/send`, { method: 'POST' })
       const data = await res.json()
@@ -55,11 +70,10 @@ export default function AdminReportsPage() {
       
       if (data.previewUrl) {
         window.open(data.previewUrl, '_blank')
-      } else {
-        alert('Email sent successfully!')
       }
+      showNotice('success', `Email sent successfully for ${studentName}!`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error sending email')
+      showNotice('error', err instanceof Error ? err.message : 'Error sending email')
     } finally {
       setSendingId(null)
     }
@@ -72,7 +86,7 @@ export default function AdminReportsPage() {
         setReports(data)
         if (data.length > 0) {
           const d = new Date(data[0].period_end)
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
           setOpen(new Set([key]))
         }
       })
@@ -89,11 +103,12 @@ export default function AdminReportsPage() {
 
   const handleExport = async (period: string, label: string) => {
     setExporting(period)
+    setNotice(null)
     try {
       const res = await fetch(`/api/admin/reports/export?period=${period}`)
       if (!res.ok) {
         const data = await res.json()
-        alert(data.error || 'Export failed')
+        showNotice('error', data.error || 'Export failed')
         return
       }
       const blob = await res.blob()
@@ -104,7 +119,7 @@ export default function AdminReportsPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert('Export failed')
+      showNotice('error', 'Export failed')
     } finally {
       setExporting(null)
     }
@@ -115,14 +130,38 @@ export default function AdminReportsPage() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#FAFAF8] text-[#2C1A0E]">
       <AdminNav />
+      <ConfirmDialog />
       <main className="flex-1 p-5 md:p-8 max-w-5xl">
-        <h1 className="text-2xl font-bold text-[#2C1A0E] mb-8 tracking-tight">Reports</h1>
+        <h1 className="text-2xl font-bold text-[#2C1A0E] mb-6 tracking-tight">Reports</h1>
+
+        {notice && (
+          <div
+            className={`sticky top-4 z-30 mb-6 p-4 rounded-2xl text-[13px] font-semibold flex items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2 ${
+              notice.type === 'success'
+                ? 'bg-green-50 border border-green-200 text-green-800'
+                : 'bg-red-50 border border-red-200 text-red-700'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {notice.type === 'success' ? (
+                <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              )}
+              <span>{notice.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              className="text-xs opacity-60 hover:opacity-100"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#6B5744]">
-            <div className="w-8 h-8 border-2 border-[#E8D5B7] border-t-[#F5A623] rounded-full animate-spin mb-3" />
-            <p className="text-sm font-medium">Loading reports...</p>
-          </div>
+          <LoadingState className="py-20" />
         ) : groups.length === 0 ? (
           <p className="text-sm text-[#B0957A] italic text-center py-12">No reports yet.</p>
         ) : (
@@ -197,7 +236,7 @@ export default function AdminReportsPage() {
                                   </a>
                                 )}
                                 <button
-                                  onClick={() => handleSend(report.id)}
+                                  onClick={() => handleSend(report.id, report.student.name)}
                                   disabled={sendingId === report.id || report.status === 'draft'}
                                   className={`text-[13px] font-semibold ml-1 transition-colors ${
                                     sendingId === report.id || report.status === 'draft'

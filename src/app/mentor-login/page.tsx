@@ -23,7 +23,7 @@ export default function MentorLoginPage() {
       })
 
       if (res.ok) {
-        router.push('/sessions')
+        window.location.href = '/sessions'
       } else {
         const data = await res.json()
         setError(data.error || 'Incorrect PIN. Please try again / PIN Salah. Silakan coba lagi.')
