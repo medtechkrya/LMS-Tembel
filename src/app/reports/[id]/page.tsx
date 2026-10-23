@@ -87,6 +87,7 @@ export default function ReportDetailPage() {
 
   const isOtherMentorReport = Boolean(report?.mentor_id && currentMentorId && report.mentor_id !== currentMentorId)
   const isLocked = report?.status === 'done' || report?.status === 'sent' || isOtherMentorReport
+  const assignedMentorName = report?.mentor?.name || mentors.find(m => m.id === report?.mentor_id)?.name || 'another mentor'
 
   const saveReport = async (extraData?: object) => {
     const res = await fetch(`/api/reports/${id}`, {
@@ -187,15 +188,35 @@ export default function ReportDetailPage() {
           </div>
         </div>
 
-        {isLocked && (
+        {isOtherMentorReport ? (
+          <div className="mb-6 p-4 bg-[#F5F2EB] border border-[#E8D5B7] rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <svg className="w-5 h-5 text-[#8a7662] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <div>
+              <p className="text-[14px] font-bold text-[#2C1A0E]">View-Only Mode / Mode Lihat Saja</p>
+              <p className="text-[13px] font-medium text-[#6B5744] mt-0.5">
+                This report was created by <strong className="text-[#2C1A0E]">{assignedMentorName}</strong>. You can view this report for reference, but only {assignedMentorName} can edit it.<br />
+                Laporan ini dibuat oleh <strong className="text-[#2C1A0E]">{assignedMentorName}</strong>. Anda dapat melihatnya sebagai referensi, namun hanya mentor bersangkutan yang dapat mengedit.
+              </p>
+            </div>
+          </div>
+        ) : (report?.status === 'done' || report?.status === 'sent') ? (
           <div className="mb-6 p-4 bg-[#FFF3CD]/80 backdrop-blur-sm border border-[#E8D5B7] rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
             <svg className="w-5 h-5 text-[#856404] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             <div>
-              <p className="text-[14px] font-bold text-[#856404]">Report Submitted</p>
-              <p className="text-[13px] font-medium text-[#856404]/80">This report has been finalized. Contact admin to make changes.<br/>Laporan ini sudah dikirim. Hubungi admin untuk melakukan perubahan.</p>
+              <p className="text-[14px] font-bold text-[#856404]">
+                {report.status === 'sent' ? 'Report Sent / Laporan Terkirim' : 'Report Finalized / Laporan Selesai'}
+              </p>
+              <p className="text-[13px] font-medium text-[#856404]/80 mt-0.5">
+                {report.status === 'sent'
+                  ? 'This report has been sent to parents. Contact admin to make changes. / Laporan ini sudah dikirim ke orang tua. Hubungi admin untuk melakukan perubahan.'
+                  : 'This report has been finalized and marked as done. Contact admin to make changes. / Laporan ini sudah difinalisasi. Hubungi admin untuk melakukan perubahan.'}
+              </p>
             </div>
           </div>
-        )}
+        ) : null}
 
         {error && (
           <div className="sticky top-16 z-30 mb-6 p-4 bg-red-50/95 backdrop-blur-sm border border-red-200 rounded-2xl text-[13px] font-medium text-red-700 flex items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2">
@@ -223,14 +244,24 @@ export default function ReportDetailPage() {
                     Mentor <span className="text-red-500">*</span>
                   </label>
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#8a7662]">
-                    <svg className="w-3.5 h-3.5 text-[#F5A623]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                    Auto-filled from your PIN
+                    <svg className="w-3.5 h-3.5 text-[#F5A623]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {isOtherMentorReport ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      )}
+                    </svg>
+                    {isOtherMentorReport ? 'Assigned Mentor' : 'Auto-filled from your PIN'}
                   </span>
                 </div>
                 <div className="w-full bg-[#FAFAF8] border border-[#E8D5B7]/60 rounded-xl px-4 py-3 text-[14px] font-semibold text-[#2C1A0E] flex items-center justify-between select-none opacity-90">
-                  <span>{mentors.find(m => m.id === form.mentor_id)?.name || report.mentor?.name || '—'}</span>
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#F5A623]/15 text-[#6B5744]">
-                    Locked
+                  <span>{assignedMentorName}</span>
+                  <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                    isOtherMentorReport
+                      ? 'bg-[#E8D5B7]/40 text-[#6B5744]'
+                      : 'bg-[#F5A623]/15 text-[#6B5744]'
+                  }`}>
+                    {isOtherMentorReport ? 'View Only' : 'Locked'}
                   </span>
                 </div>
               </div>

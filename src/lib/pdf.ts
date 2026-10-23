@@ -200,9 +200,9 @@ export async function generatePdfBuffer(report: PdfReportData): Promise<Buffer> 
     // Gunakan sparticuz + puppeteer-core di server (production/Vercel)
     browser = await puppeteerCore.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
+      defaultViewport: (chromium as any).defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      headless: (chromium as any).headless,
     })
   } else {
     // Gunakan puppeteer standar di localhost/development
