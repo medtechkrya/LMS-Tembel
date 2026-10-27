@@ -8,6 +8,8 @@ import { getAvailablePeriods, getCurrentPeriod } from '@/lib/period'
 
 interface Session {
   id: string
+  student_id: string
+  mentor_id: string | null
   date: string
   attendance: string
   activity: string
@@ -26,7 +28,16 @@ const ATTENDANCE_BADGE: Record<string, string> = {
   hadir: 'bg-green-100/80 text-green-700 ring-1 ring-green-600/10',
 }
 
-function SessionCard({ session, showName }: { session: Session; showName: boolean }) {
+function SessionCard({
+  session,
+  showName,
+  currentMentorId,
+}: {
+  session: Session
+  showName: boolean
+  currentMentorId: string | null
+}) {
+  const isAuthor = Boolean(currentMentorId && session.mentor_id && currentMentorId === session.mentor_id)
   const badge = ATTENDANCE_BADGE[session.attendance] ?? 'bg-gray-100 text-gray-600 ring-1 ring-gray-500/10'
   const label = ATTENDANCE_LABEL[session.attendance] ?? session.attendance
   const date = new Date(session.date).toLocaleDateString('en-US', {
@@ -50,15 +61,28 @@ function SessionCard({ session, showName }: { session: Session; showName: boolea
       {(session.attendance === 'Present' || session.attendance === 'hadir') && session.activity && (
         <p className="text-[#2C1A0E] mt-2.5 line-clamp-2 leading-relaxed text-[15px]">{session.activity}</p>
       )}
-      {session.photo_path && (
-        <div className="mt-3.5">
+      <div className="mt-3.5 flex items-end justify-between gap-3">
+        {session.photo_path ? (
           <img
             src={session.photo_path}
             alt="Foto sesi"
             className="w-14 h-14 object-cover rounded-xl shadow-sm border border-black/5"
           />
-        </div>
-      )}
+        ) : (
+          <div />
+        )}
+        {isAuthor && (
+          <Link
+            href={`/sessions/${session.id}/edit`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#6B5744] bg-[#FAFAF8] border border-[#E8D5B7]/80 hover:bg-[#F5A623] hover:text-[#2C1A0E] hover:border-[#F5A623] transition-all shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            <span>Edit Recap</span>
+          </Link>
+        )}
+      </div>
     </div>
   )
 }
@@ -70,17 +94,24 @@ export default function SessionsPage() {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [showUpdated, setShowUpdated] = useState(false)
+  const [currentMentorId, setCurrentMentorId] = useState<string | null>(null)
   
   const periods = getAvailablePeriods()
   const [selectedPeriodKey, setSelectedPeriodKey] = useState(getCurrentPeriod().key)
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('success')) setShowSuccess(true)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('success')) setShowSuccess(true)
+    if (params.get('updated')) setShowUpdated(true)
 
-    fetch('/api/sessions')
-      .then(r => r.json())
-      .then((data: Session[]) => {
-        setAllSessions(data)
+    Promise.all([
+      fetch('/api/sessions').then(r => r.json()),
+      fetch('/api/mentor-me').then(r => (r.ok ? r.json() : null)),
+    ])
+      .then(([data, me]: [Session[], { id: string } | null]) => {
+        setAllSessions(data || [])
+        setCurrentMentorId(me?.id || null)
       })
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -158,6 +189,16 @@ export default function SessionsPage() {
           </div>
         )}
 
+        {showUpdated && (
+          <div className="sticky top-16 z-30 mb-6 p-4 bg-green-50/95 backdrop-blur-sm border border-green-200 rounded-2xl text-sm font-medium text-green-700 shadow-sm flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0 font-bold">✓</div>
+              <span>Recap session updated successfully!</span>
+            </div>
+            <button onClick={() => setShowUpdated(false)} className="text-green-500 hover:text-green-800 font-bold px-1.5" aria-label="Close">✕</button>
+          </div>
+        )}
+
         {loading ? (
           <LoadingState className="py-20" />
         ) : sessions.length === 0 ? (
@@ -230,7 +271,7 @@ export default function SessionsPage() {
             {selectedStudent ? (
               <div className="space-y-4 animate-in fade-in duration-300">
                 {selectedStudentSessions.map(session => (
-                  <SessionCard key={session.id} session={session} showName={false} />
+                  <SessionCard key={session.id} session={session} showName={false} currentMentorId={currentMentorId} />
                 ))}
               </div>
             ) : (
