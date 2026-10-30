@@ -4,6 +4,7 @@ import path from 'path'
 import archiver from 'archiver'
 import { Writable } from 'stream'
 import { prisma } from '@/lib/prisma'
+import sharp from 'sharp'
 
 function collectZip(files: Array<{ name: string; data: Buffer }>): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -44,20 +45,43 @@ export async function GET(req: NextRequest) {
   })
 
   const files: Array<{ name: string; data: Buffer }> = []
+  const usedNames = new Map<string, number>()
 
   for (const session of sessions) {
     if (!session.photo_path) continue
-    const filePath = path.join(process.cwd(), 'public', session.photo_path)
     try {
-      await access(filePath)
-      const data = await readFile(filePath)
-      const ext = session.photo_path.split('.').pop() ?? 'jpg'
+      let rawData: Buffer
+      if (session.photo_path.startsWith('http://') || session.photo_path.startsWith('https://')) {
+        const res = await fetch(session.photo_path)
+        if (!res.ok) continue
+        rawData = Buffer.from(await res.arrayBuffer())
+      } else {
+        const filePath = path.join(process.cwd(), 'public', session.photo_path)
+        await access(filePath)
+        rawData = await readFile(filePath)
+      }
+
+      // Convert to PNG for download
+      let pngData: Buffer
+      try {
+        pngData = await sharp(rawData).png().toBuffer()
+      } catch {
+        pngData = rawData
+      }
+
       const dateStr = new Date(session.date).toLocaleDateString('en-GB', {
         day: '2-digit', month: '2-digit', year: 'numeric',
       }).replace(/\//g, '-')
-      files.push({ name: `${dateStr}-${session.id.slice(0, 6)}.${ext}`, data })
+
+      const cleanStudentName = (session.student?.name || 'Student').trim().replace(/[/\\?%*:|"<>]/g, '')
+      const baseName = `${dateStr}-${cleanStudentName}`
+      const count = (usedNames.get(baseName) || 0) + 1
+      usedNames.set(baseName, count)
+      const filename = count === 1 ? `${baseName}.png` : `${baseName}-${count}.png`
+
+      files.push({ name: filename, data: pngData })
     } catch {
-      // file missing — skip
+      // file missing or network error — skip
     }
   }
 
@@ -73,10 +97,14 @@ export async function GET(req: NextRequest) {
 
   const zipBuffer = await collectZip(files)
 
-  return new NextResponse(zipBuffer as unknown as BodyInit, {
+  return new Response(new Uint8Array(zipBuffer), {
+    status: 200,
     headers: {
       'Content-Type': 'application/zip',
       'Content-Disposition': `attachment; filename="${zipFilename}"`,
+      'Content-Length': String(zipBuffer.length),
+      'Accept-Ranges': 'none',
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
     },
   })
 }

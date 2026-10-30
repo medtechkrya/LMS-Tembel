@@ -323,8 +323,8 @@ export default function ReportDetailPage() {
                           <br />
                           <span className="text-[12px] font-medium text-[#8a7662]">{formatDate(session.date)}</span>
                         </td>
-                        <td className="py-4 px-2 text-[#2C1A0E] text-[13px] leading-relaxed align-top">{session.activity}</td>
-                        <td className="py-4 px-2 text-[#2C1A0E] text-[13px] leading-relaxed align-top">{session.observation}</td>
+                        <td className="py-4 px-2 text-[#2C1A0E] text-[13px] leading-relaxed align-top whitespace-pre-wrap">{session.activity}</td>
+                        <td className="py-4 px-2 text-[#2C1A0E] text-[13px] leading-relaxed align-top whitespace-pre-wrap">{session.observation}</td>
                       </tr>
                     ))}
                   </tbody>

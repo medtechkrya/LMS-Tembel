@@ -7,6 +7,19 @@ export async function generateMetadata({
 }: {
   params: { id: string }
 }): Promise<Metadata> {
+  const iconConfig = {
+    icon: [
+      { url: '/favicon.ico?v=2', sizes: 'any' },
+      { url: '/icon.png?v=2', type: 'image/png', sizes: '32x32' },
+      { url: '/icon-192.png?v=2', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png?v=2', type: 'image/png', sizes: '512x512' },
+    ],
+    shortcut: '/favicon.ico?v=2',
+    apple: [
+      { url: '/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' },
+    ],
+  }
+
   try {
     const report = await prisma.report.findUnique({
       where: { id: params.id },
@@ -17,6 +30,7 @@ export async function generateMetadata({
       return {
         title: 'Monthly Report',
         description: 'Student Monthly Progress Report at Teman Belajar.',
+        icons: iconConfig,
       }
     }
 
@@ -32,6 +46,7 @@ export async function generateMetadata({
     return {
       title,
       description,
+      icons: iconConfig,
       openGraph: {
         title,
         description,
@@ -56,6 +71,7 @@ export async function generateMetadata({
     return {
       title: 'Monthly Report',
       description: 'Student Monthly Progress Report at Teman Belajar.',
+      icons: iconConfig,
     }
   }
 }

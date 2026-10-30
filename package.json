@@ -17,13 +17,15 @@
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.4.1",
     "mysql2": "^3.22.4",
+    "mysqldump": "^3.2.0",
     "next": "14.2.35",
     "nodemailer": "^9.1.1",
     "prisma": "^5.22.0",
     "puppeteer": "^24.40.0",
     "puppeteer-core": "^25.10.0",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "sharp": "^0.35.5"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\",\"moduleResolution\":\"node\",\"skipLibCheck\":true} prisma/seed.ts"

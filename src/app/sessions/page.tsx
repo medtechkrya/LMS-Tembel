@@ -59,7 +59,7 @@ function SessionCard({
         </span>
       </div>
       {(session.attendance === 'Present' || session.attendance === 'hadir') && session.activity && (
-        <p className="text-[#2C1A0E] mt-2.5 line-clamp-2 leading-relaxed text-[15px]">{session.activity}</p>
+        <p className="text-[#2C1A0E] mt-2.5 line-clamp-4 leading-relaxed text-[15px] whitespace-pre-wrap">{session.activity}</p>
       )}
       <div className="mt-3.5 flex items-end justify-between gap-3">
         {session.photo_path ? (

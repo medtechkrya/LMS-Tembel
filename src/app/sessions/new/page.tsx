@@ -301,14 +301,20 @@ export default function NewSessionPage() {
           <div>
             <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
               Activity / Aktivitas *{' '}
-              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1 sentence / kalimat)</span>
+              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1-2 sentence / kalimat)</span>
             </label>
             <textarea
               name="activity"
               value={form.activity}
               onChange={handleChange}
               rows={3}
-              placeholder="What was done in this session? / Apa yang dilakukan dalam sesi ini?"
+              placeholder={
+                form.attendance === 'Absent'
+                  ? 'Reason for absence / Alasan siswa tidak hadir'
+                  : form.attendance === 'Reschedule'
+                  ? 'Reason for reschedule / Alasan reschedule'
+                  : 'What was done in this session? / Apa yang dilakukan dalam sesi ini?'
+              }
               className={`w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white resize-none transition-all placeholder:text-[#B0957A] ${fieldErrors.activity ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
             />
             {fieldErrors.activity && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.activity}</p>}
@@ -318,14 +324,20 @@ export default function NewSessionPage() {
           <div>
             <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
               Observation / Observasi *{' '}
-              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1 paragraph, 1-6 sentences / kalimat)</span>
+              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1 paragraph, 2-6 sentences / kalimat)</span>
             </label>
             <textarea
               name="observation"
               value={form.observation}
               onChange={handleChange}
               rows={4}
-              placeholder="How was the student's development and response? / Bagaimana perkembangan, performa, dan respons siswa dalam sesi ini?"
+              placeholder={
+                form.attendance === 'Absent'
+                  ? 'Follow-up or notes / Catatan atau tindak lanjut'
+                  : form.attendance === 'Reschedule'
+                  ? 'Reschedule plan / Jadwal pengganti atau catatan'
+                  : "How was the student's development and response? / Bagaimana perkembangan, performa, dan respons siswa dalam sesi ini?"
+              }
               className={`w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white resize-none transition-all placeholder:text-[#B0957A] ${fieldErrors.observation ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'}`}
             />
             {fieldErrors.observation && <p className="mt-1.5 text-[13px] font-medium text-red-600">{fieldErrors.observation}</p>}

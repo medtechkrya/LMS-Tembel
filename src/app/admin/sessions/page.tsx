@@ -130,8 +130,10 @@ export default function AdminSessionsPage() {
       const [year, month] = selectedPeriod.split('-').map(Number)
       const monthLabel = new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).replace(' ', '')
       a.download = `Photos-${studentName}-${monthLabel}.zip`
+      document.body.appendChild(a)
       a.click()
-      URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
       setHasDownloaded(true)
     } catch {
       setError('Download failed')

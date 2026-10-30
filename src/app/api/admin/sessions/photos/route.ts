@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { unlink } from 'fs/promises'
 import path from 'path'
 import { prisma } from '@/lib/prisma'
+import { del } from '@vercel/blob'
 
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -28,9 +29,13 @@ export async function DELETE(req: NextRequest) {
 
   for (const session of sessions) {
     if (!session.photo_path) continue
-    const filePath = path.join(process.cwd(), 'public', session.photo_path)
     try {
-      await unlink(filePath)
+      if (session.photo_path.startsWith('http://') || session.photo_path.startsWith('https://')) {
+        await del(session.photo_path).catch(() => {})
+      } else {
+        const filePath = path.join(process.cwd(), 'public', session.photo_path)
+        await unlink(filePath).catch(() => {})
+      }
     } catch {
       // file already missing — continue
     }

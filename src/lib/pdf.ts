@@ -46,8 +46,84 @@ export function getPdfFilename(studentName: string, periodEnd: Date): string {
   return `MR-${firstName}-${month}.pdf`
 }
 
-function fileToBase64(filePath: string): string | null {
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * Converts plain text containing bullet points, numbered lists, or paragraphs
+ * into clean, beautifully styled HTML for PDF rendering.
+ */
+export function formatRichTextToHtml(text: string | null | undefined): string {
+  if (!text || !text.trim()) return ''
+
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  const output: string[] = []
+  let listType: 'ul' | 'ol' | null = null
+
+  function closeList() {
+    if (listType === 'ul') {
+      output.push('</ul>')
+      listType = null
+    } else if (listType === 'ol') {
+      output.push('</ol>')
+      listType = null
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i]
+    const trimmed = rawLine.trim()
+
+    if (!trimmed) {
+      closeList()
+      continue
+    }
+
+    // Unordered bullet list: - item, * item, • item, – item, — item (with or without space for special symbols)
+    const ulMatch = trimmed.match(/^[-*]\s+(.*)$/) || trimmed.match(/^[•–—]\s*(.*)$/)
+    // Ordered numbered list: 1. item, 1) item, etc.
+    const olMatch = trimmed.match(/^(\d+)[\.\)]\s+(.*)$/)
+
+    if (ulMatch) {
+      if (listType === 'ol') closeList()
+      if (listType !== 'ul') {
+        output.push('<ul style="margin:4px 0 6px 18px;padding-left:0;list-style-type:disc;">')
+        listType = 'ul'
+      }
+      output.push(`<li style="margin-bottom:3px;padding-left:4px;line-height:1.5;">${escapeHtml(ulMatch[1])}</li>`)
+    } else if (olMatch) {
+      if (listType === 'ul') closeList()
+      if (listType !== 'ol') {
+        output.push('<ol style="margin:4px 0 6px 18px;padding-left:0;list-style-type:decimal;">')
+        listType = 'ol'
+      }
+      output.push(`<li style="margin-bottom:3px;padding-left:4px;line-height:1.5;">${escapeHtml(olMatch[2])}</li>`)
+    } else {
+      closeList()
+      output.push(`<p style="margin:0 0 6px 0;line-height:1.55;">${escapeHtml(trimmed)}</p>`)
+    }
+  }
+
+  closeList()
+  return output.join('')
+}
+
+async function resolveImageSrc(filePath: string): Promise<string | null> {
   try {
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      const res = await fetch(filePath)
+      if (!res.ok) return null
+      const buf = Buffer.from(await res.arrayBuffer())
+      const ext = filePath.split('.').pop()?.toLowerCase() ?? 'webp'
+      const mime = ext === 'jpg' ? 'jpeg' : ext
+      return `data:image/${mime};base64,${buf.toString('base64')}`
+    }
     const absPath = path.join(process.cwd(), 'public', filePath.replace(/^\//, ''))
     if (!fs.existsSync(absPath)) return null
     const buf = fs.readFileSync(absPath)
@@ -59,21 +135,27 @@ function fileToBase64(filePath: string): string | null {
   }
 }
 
-export function buildReportHtml(report: PdfReportData): string {
+export async function buildReportHtml(report: PdfReportData): Promise<string> {
   const periodHeader = formatPeriodHeader(report.period_start, report.period_end)
   const mentorName = report.mentor?.name || '—'
-  const logoSrc = fileToBase64('/Logo-Teman-Belajar.png')
+  const logoSrc = await resolveImageSrc('/Logo-Teman-Belajar.png')
   const logoHtml = logoSrc
     ? `<img src="${logoSrc}" alt="Teman Belajar" style="width:180px;display:block;" />`
     : `<span style="font-size:18px;font-weight:bold;">Teman Belajar</span>`
 
   const sessionRows = report.sessions
     .map((s, i) => {
-      const photoSrc = s.photo_path ? fileToBase64(s.photo_path) : null
-      const photoHtml = photoSrc
-        ? `<br/><img src="${photoSrc}" alt="Session photo" style="max-width:80px;max-height:60px;margin-top:4px;display:block;" />`
-        : ''
-      return `<tr style="page-break-inside:avoid;"><td style="width:20%;border:1px solid #000;padding:6px;vertical-align:top;">Session ${i + 1}<br/><small>${formatSessionDate(s.date)}</small>${photoHtml}</td><td style="width:30%;border:1px solid #000;padding:6px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;">${s.activity}</td><td style="width:50%;border:1px solid #000;padding:6px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;">${s.observation}</td></tr>`
+      return `<tr style="page-break-inside:avoid;">
+      <td style="width:20%;border:1px solid #000;padding:6px;vertical-align:top;">
+        Session ${i + 1}<br/><small>${formatSessionDate(s.date)}</small>
+      </td>
+      <td style="width:30%;border:1px solid #000;padding:6px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;">
+        ${formatRichTextToHtml(s.activity)}
+      </td>
+      <td style="width:50%;border:1px solid #000;padding:6px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;">
+        ${formatRichTextToHtml(s.observation)}
+      </td>
+    </tr>`
     })
     .join('')
 
@@ -123,8 +205,7 @@ export function buildReportHtml(report: PdfReportData): string {
   }
   .section-body {
     padding: 8pt 10pt;
-    min-height: 60pt;
-    white-space: pre-wrap;
+    min-height: 48pt;
     word-wrap: break-word;
     overflow-wrap: break-word;
     word-break: break-word;
@@ -154,7 +235,7 @@ export function buildReportHtml(report: PdfReportData): string {
 <div class="section">
   <div class="section-title">1. Learning Achievements This Period</div>
   ${report.summary_achievements
-    ? `<div class="section-body">${report.summary_achievements}</div>`
+    ? `<div class="section-body">${formatRichTextToHtml(report.summary_achievements)}</div>`
     : `<div class="section-body empty">Not yet filled in.</div>`}
 </div>
 <div class="section" style="margin-bottom:0;border-bottom:none;">
@@ -175,13 +256,13 @@ export function buildReportHtml(report: PdfReportData): string {
 <div class="section">
   <div class="section-title">3. Overall Development Observation</div>
   ${report.summary_general
-    ? `<div class="section-body">${report.summary_general}</div>`
+    ? `<div class="section-body">${formatRichTextToHtml(report.summary_general)}</div>`
     : `<div class="section-body empty">Not yet filled in.</div>`}
 </div>
 <div class="section">
   <div class="section-title">4. Notes for Parents</div>
   ${report.summary_parents
-    ? `<div class="section-body">${report.summary_parents}</div>`
+    ? `<div class="section-body">${formatRichTextToHtml(report.summary_parents)}</div>`
     : `<div class="section-body empty">Not yet filled in.</div>`}
 </div>
 <div class="footer">
@@ -193,7 +274,7 @@ export function buildReportHtml(report: PdfReportData): string {
 }
 
 export async function generatePdfBuffer(report: PdfReportData): Promise<Buffer> {
-  const html = buildReportHtml(report)
+  const html = await buildReportHtml(report)
   
   let browser;
   if (process.env.NODE_ENV === 'production') {

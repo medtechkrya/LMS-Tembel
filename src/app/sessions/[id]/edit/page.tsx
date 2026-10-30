@@ -393,7 +393,7 @@ export default function EditSessionPage() {
           <div>
             <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
               Activity *{' '}
-              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1 sentence)</span>
+              <span className="text-[#B0957A] normal-case tracking-normal ml-1">(1-2 sentences)</span>
             </label>
             <textarea
               name="activity"
@@ -401,7 +401,13 @@ export default function EditSessionPage() {
               onChange={handleChange}
               disabled={!isAuthor}
               rows={3}
-              placeholder="What was done in this session?"
+              placeholder={
+                form.attendance === 'Absent'
+                  ? 'Reason for absence'
+                  : form.attendance === 'Reschedule'
+                  ? 'Reason for reschedule'
+                  : 'What was done in this session?'
+              }
               className={`w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white resize-none transition-all placeholder:text-[#B0957A] disabled:opacity-75 disabled:cursor-not-allowed ${
                 fieldErrors.activity ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'
               }`}
@@ -414,7 +420,7 @@ export default function EditSessionPage() {
             <label className="block text-[13px] font-semibold text-[#2C1A0E] mb-1.5 uppercase tracking-wide">
               Observation *{' '}
               <span className="text-[#B0957A] normal-case tracking-normal ml-1">
-                (1 paragraph, 1-6 sentences)
+                (1 paragraph, 2-6 sentences)
               </span>
             </label>
             <textarea
@@ -423,7 +429,13 @@ export default function EditSessionPage() {
               onChange={handleChange}
               disabled={!isAuthor}
               rows={4}
-              placeholder="How was the student's development, performance, and response in this session?"
+              placeholder={
+                form.attendance === 'Absent'
+                  ? 'Follow-up or notes'
+                  : form.attendance === 'Reschedule'
+                  ? 'Reschedule plan or notes'
+                  : "How was the student's development, performance, and response in this session?"
+              }
               className={`w-full bg-[#FAFAF8] border rounded-xl px-4 py-3.5 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#F5A623]/20 focus:bg-white resize-none transition-all placeholder:text-[#B0957A] disabled:opacity-75 disabled:cursor-not-allowed ${
                 fieldErrors.observation ? 'border-red-400' : 'border-[#E8D5B7]/60 focus:border-[#F5A623]'
               }`}
