@@ -23,7 +23,7 @@ export async function generateMetadata({
   try {
     const report = await prisma.report.findUnique({
       where: { id: params.id },
-      include: { student: true },
+      include: { student: true, mentor: true },
     })
 
     if (!report) {
@@ -40,7 +40,8 @@ export async function generateMetadata({
       report.period_end instanceof Date ? report.period_end.toISOString() : String(report.period_end)
     )
 
-    const title = `${studentName} - Monthly Report (${period})`
+    const mentorPart = report.mentor?.name ? ` (${report.mentor.name})` : ''
+    const title = `${studentName}${mentorPart} - Monthly Report (${period})`
     const description = `Monthly learning progress report for ${studentName} (${period}) at Teman Belajar.`
 
     return {

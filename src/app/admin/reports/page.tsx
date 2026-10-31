@@ -51,10 +51,10 @@ export default function AdminReportsPage() {
     setNotice({ type, text })
   }
 
-  const handleSend = async (reportId: string, studentName: string) => {
+  const handleSend = async (reportId: string, studentName: string, mentorName?: string | null) => {
     const ok = await confirm({
       title: 'Send Report to Parent',
-      message: `Send ${studentName}'s monthly report PDF to the parent's email?`,
+      message: `Send ${studentName}'s monthly report${mentorName ? ` (${mentorName})` : ''} PDF to the parent's email?`,
       confirmText: 'Send Email',
     })
     if (!ok) return
@@ -236,7 +236,7 @@ export default function AdminReportsPage() {
                                   </a>
                                 )}
                                 <button
-                                  onClick={() => handleSend(report.id, report.student.name)}
+                                  onClick={() => handleSend(report.id, report.student.name, report.mentor?.name)}
                                   disabled={sendingId === report.id || report.status === 'draft'}
                                   className={`text-[13px] font-semibold ml-1 transition-colors ${
                                     sendingId === report.id || report.status === 'draft'

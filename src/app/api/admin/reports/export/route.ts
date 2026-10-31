@@ -55,12 +55,16 @@ export async function GET(req: NextRequest) {
       where: {
         student_id: report.student_id,
         date: { gte: report.period_start, lte: report.period_end },
+        ...(report.mentor_id ? { mentor_id: report.mentor_id } : {}),
       },
       orderBy: { date: 'asc' },
     })
 
     const pdfBuffer = await generatePdfBuffer({ ...report, sessions })
-    const filename = getPdfFilename(report.student.name, report.period_end)
+    let filename = getPdfFilename(report.student.name, report.period_end, report.mentor?.name)
+    if (files.some(f => f.name === filename)) {
+      filename = filename.replace(/\.pdf$/, `-${report.id.slice(-4)}.pdf`)
+    }
     files.push({ name: filename, data: pdfBuffer })
   }
 

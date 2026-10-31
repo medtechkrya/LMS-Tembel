@@ -17,6 +17,7 @@ interface Report {
   student_id: string
   period_start: string
   status: string
+  mentor?: { name: string } | null
 }
 
 const STATUS_LABEL: Record<string, string> = { draft: 'Draft', done: 'Done', sent: 'Sent' }
@@ -49,10 +50,10 @@ export default function AdminDashboard() {
 
   const currentPeriod = getCurrentPeriod()
 
-  function getReport(studentId: string): Report | null {
-    return reports.find(r =>
+  function getStudentReports(studentId: string): Report[] {
+    return reports.filter(r =>
       r.student_id === studentId && isSamePeriodStart(r.period_start, currentPeriod.start)
-    ) ?? null
+    )
   }
 
   const periodReports = reports.filter(r =>
@@ -61,10 +62,10 @@ export default function AdminDashboard() {
 
   const filteredStudents = students.filter(student => {
     if (searchQuery && !student.name.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    const report = getReport(student.id)
-    const status = report?.status ?? 'missing'
-    if (filter !== 'all' && status !== filter) return false
-    return true
+    const sReports = getStudentReports(student.id)
+    if (filter === 'all') return true
+    if (filter === 'missing') return sReports.length === 0
+    return sReports.some(r => r.status === filter)
   })
 
   const FilterButton = ({ value, label }: { value: typeof filter, label: string }) => (
@@ -165,22 +166,29 @@ export default function AdminDashboard() {
           ) : (
             <div className="divide-y divide-[#E8D5B7]/40">
               {filteredStudents.map(student => {
-                const report = getReport(student.id)
-                const status = report?.status ?? null
+                const sReports = getStudentReports(student.id)
                 return (
                   <div key={student.id} className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-3 hover:bg-[#FAFAF8]/50 transition-colors gap-3">
                     <div>
                       <p className="text-[15px] font-semibold text-[#2C1A0E]">{student.name}</p>
                       <p className="text-[13px] text-[#8a7662] mt-0.5">{student.program}</p>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset ${status ? (STATUS_STYLE[status] ?? 'bg-gray-100/80 text-gray-600 ring-gray-500/10') : 'bg-[#FDF8F3] text-[#A67C52] ring-[#E8D5B7]/60'}`}>
-                        {status ? (STATUS_LABEL[status] ?? status) : 'Missing'}
-                      </span>
-                      {report && (
-                        <Link href={`/admin/reports/${report.id}`} className="text-[13px] font-bold text-[#F5A623] hover:text-[#E09615] transition-colors bg-[#FAFAF8] px-3 py-1.5 rounded-lg border border-[#E8D5B7]/60 hover:bg-white hover:border-[#F5A623]/40 shadow-sm hover:shadow">
-                          View
-                        </Link>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {sReports.length === 0 ? (
+                        <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset bg-[#FDF8F3] text-[#A67C52] ring-[#E8D5B7]/60">
+                          Missing
+                        </span>
+                      ) : (
+                        sReports.map(r => (
+                          <div key={r.id} className="flex items-center gap-2">
+                            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ring-1 ring-inset ${STATUS_STYLE[r.status] ?? 'bg-gray-100/80 text-gray-600 ring-gray-500/10'}`}>
+                              {r.mentor?.name ? `${r.mentor.name}: ` : ''}{STATUS_LABEL[r.status] ?? r.status}
+                            </span>
+                            <Link href={`/admin/reports/${r.id}`} className="text-[13px] font-bold text-[#F5A623] hover:text-[#E09615] transition-colors bg-[#FAFAF8] px-3 py-1.5 rounded-lg border border-[#E8D5B7]/60 hover:bg-white hover:border-[#F5A623]/40 shadow-sm hover:shadow">
+                              View
+                            </Link>
+                          </div>
+                        ))
                       )}
                     </div>
                   </div>

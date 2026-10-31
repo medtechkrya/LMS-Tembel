@@ -21,13 +21,14 @@ export async function POST(
       where: {
         student_id: report.student_id,
         date: { gte: report.period_start, lte: report.period_end },
+        ...(report.mentor_id ? { mentor_id: report.mentor_id } : {}),
       },
       orderBy: { date: 'asc' },
     })
 
     // 1. Generate PDF
     const pdfBuffer = await generatePdfBuffer({ ...report, sessions })
-    const filename = getPdfFilename(report.student.name, report.period_end)
+    const filename = getPdfFilename(report.student.name, report.period_end, report.mentor?.name)
 
     // 2. Setup Nodemailer Transport
     const transporter = nodemailer.createTransport({
@@ -42,6 +43,7 @@ export async function POST(
 
     // 3. Send Email
     const periodStr = `${report.period_start.toLocaleDateString('en-US', { month: 'short' })} - ${report.period_end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+    const mentorTag = report.mentor?.name ? ` (${report.mentor.name})` : ''
     
     const appreciations = [
       `We sincerely appreciate your continued support and trust in our learning program.`,
@@ -58,13 +60,13 @@ export async function POST(
         address: process.env.SMTP_USER || 'temanbelajar@krya.global'
       },
       to: report.student.parent_email,
-      subject: `Teman Belajar Krya Monthly Report - ${report.student.name} - ${periodStr}`,
-      text: `Dear ${report.student.name} Parent,\n\nPlease find attached the monthly report for ${report.student.name} for the period of ${periodStr}.\n\n${randomAppreciation}\n\nIf you have any questions, feel free to contact us.\n\nBest regards,\nTeman Belajar Team`,
+      subject: `Teman Belajar Krya Monthly Report - ${report.student.name}${mentorTag} - ${periodStr}`,
+      text: `Dear ${report.student.name} Parent,\n\nPlease find attached the monthly report for ${report.student.name}${report.mentor?.name ? ` (Mentor: ${report.mentor.name})` : ''} for the period of ${periodStr}.\n\n${randomAppreciation}\n\nIf you have any questions, feel free to contact us.\n\nBest regards,\nTeman Belajar Team`,
       html: `
         <div style="font-family: sans-serif; color: #2C1A0E; max-w: 600px; margin: 0 auto; line-height: 1.6;">
           <h2 style="color: #F5A623;">Monthly Report</h2>
           <p>Dear ${report.student.name} Parent,</p>
-          <p>Please find attached the monthly report for <strong>${report.student.name}</strong> for the period of <strong>${periodStr}</strong>.</p>
+          <p>Please find attached the monthly report for <strong>${report.student.name}</strong>${report.mentor?.name ? ` (Mentor: <strong>${report.mentor.name}</strong>)` : ''} for the period of <strong>${periodStr}</strong>.</p>
           <p>${randomAppreciation}</p>
           <p>If you have any questions, feel free to contact us.</p>
           <br/>

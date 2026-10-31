@@ -40,10 +40,11 @@ function formatSessionDate(date: Date): string {
   })
 }
 
-export function getPdfFilename(studentName: string, periodEnd: Date): string {
-  const firstName = studentName.split(' ')[0]
+export function getPdfFilename(studentName: string, periodEnd: Date, mentorName?: string | null): string {
+  const firstName = studentName.trim().split(' ')[0]
   const month = periodEnd.toLocaleDateString('en-US', { month: 'long' })
-  return `MR-${firstName}-${month}.pdf`
+  const mentorPart = mentorName ? `-${mentorName.trim().split(' ')[0]}` : ''
+  return `MR-${firstName}-${month}${mentorPart}.pdf`
 }
 
 function escapeHtml(str: string): string {
@@ -85,10 +86,10 @@ export function formatRichTextToHtml(text: string | null | undefined): string {
       continue
     }
 
-    // Unordered bullet list: - item, * item, • item, – item, — item (with or without space for special symbols)
-    const ulMatch = trimmed.match(/^[-*]\s+(.*)$/) || trimmed.match(/^[•–—]\s*(.*)$/)
-    // Ordered numbered list: 1. item, 1) item, etc.
-    const olMatch = trimmed.match(/^(\d+)[\.\)]\s+(.*)$/)
+    // Unordered bullet list: - item, * item, • item, ● item, etc.
+    const ulMatch = trimmed.match(/^[-*]\s+(.*)$/) || trimmed.match(/^[•●○◦▪▫■–—·∙⁃►▸]\s*(.*)$/)
+    // Ordered numbered list: 1. item, 1) item, (1) item, etc.
+    const olMatch = trimmed.match(/^(\d+)[\.\)]\s+(.*)$/) || trimmed.match(/^\((\d+)\)\s*(.*)$/)
 
     if (ulMatch) {
       if (listType === 'ol') closeList()
@@ -96,14 +97,16 @@ export function formatRichTextToHtml(text: string | null | undefined): string {
         output.push('<ul style="margin:4px 0 6px 18px;padding-left:0;list-style-type:disc;">')
         listType = 'ul'
       }
-      output.push(`<li style="margin-bottom:3px;padding-left:4px;line-height:1.5;">${escapeHtml(ulMatch[1])}</li>`)
+      const itemText = ulMatch[1] ?? ulMatch[2] ?? ''
+      output.push(`<li style="margin-bottom:3px;padding-left:4px;line-height:1.5;">${escapeHtml(itemText)}</li>`)
     } else if (olMatch) {
       if (listType === 'ul') closeList()
       if (listType !== 'ol') {
         output.push('<ol style="margin:4px 0 6px 18px;padding-left:0;list-style-type:decimal;">')
         listType = 'ol'
       }
-      output.push(`<li style="margin-bottom:3px;padding-left:4px;line-height:1.5;">${escapeHtml(olMatch[2])}</li>`)
+      const itemText = olMatch[1] ?? olMatch[2] ?? ''
+      output.push(`<li style="margin-bottom:3px;padding-left:4px;line-height:1.5;">${escapeHtml(itemText)}</li>`)
     } else {
       closeList()
       output.push(`<p style="margin:0 0 6px 0;line-height:1.55;">${escapeHtml(trimmed)}</p>`)

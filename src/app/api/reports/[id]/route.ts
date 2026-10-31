@@ -15,6 +15,7 @@ export async function GET(
     where: {
       student_id: report.student_id,
       date: { gte: report.period_start, lte: report.period_end },
+      ...(report.mentor_id ? { mentor_id: report.mentor_id } : {}),
     },
     orderBy: { date: 'asc' },
   })

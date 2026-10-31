@@ -28,7 +28,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid period_key' }, { status: 400 })
   }
 
-  // Return existing report if one already exists for this student+period (with ±3 day tolerance for timezone offsets)
+  const cookieMentorId = cookies().get('mentor_session')?.value
+  const mentorId = cookieMentorId && cookieMentorId !== 'true' ? cookieMentorId : null
+
+  // Return existing report if one already exists for this student+period+mentor (with ±3 day tolerance for timezone offsets)
   const windowStart = new Date(period.start.getTime() - 3 * 24 * 60 * 60 * 1000)
   const windowEnd = new Date(period.start.getTime() + 3 * 24 * 60 * 60 * 1000)
 
@@ -36,14 +39,12 @@ export async function POST(req: NextRequest) {
     where: {
       student_id,
       period_start: { gte: windowStart, lte: windowEnd },
+      ...(mentorId ? { mentor_id: mentorId } : { mentor_id: null }),
     },
   })
   if (existing) {
     return NextResponse.json(existing)
   }
-
-  const cookieMentorId = cookies().get('mentor_session')?.value
-  const mentorId = cookieMentorId && cookieMentorId !== 'true' ? cookieMentorId : null
 
   const report = await prisma.report.create({
     data: {
